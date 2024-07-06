@@ -8,7 +8,7 @@ body{
 .book{
     
 }
-a{
+/* a{
         text-decoration: none;
     }
     .container{
@@ -44,7 +44,7 @@ a{
         align-items: center;
         border-radius: 50%;
         transform: translateX(20px);
-    }
+    } */
 
 
 
@@ -102,7 +102,7 @@ a{
 
 
 
-
+/* cart */
 .cart{
     color: #fff;
     position: fixed;
