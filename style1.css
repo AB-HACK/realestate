@@ -112,7 +112,7 @@ header {
 }
 
 #menu-icon {
-    font-size: 35px;
+    /* font-size: 35px; */
     color: var(--text-color);
     cursor: pointer;
     z-index: 10001;
@@ -121,7 +121,7 @@ header {
 }
 
 .menu-bx {
-    background: red;
+    /* background: red; */
     font-size: 3rem;
     display: none;
 }
