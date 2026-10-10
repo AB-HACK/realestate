@@ -1,75 +1,108 @@
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
-  Building2, Users, CalendarDays, DollarSign, TrendingUp,
-  Plus, ArrowRight, FileText, Phone, Mail, Eye,
+  Building2, Users, CalendarDays, DollarSign, TrendingUp, TrendingDown,
+  Plus, ArrowRight, Eye, Home, Award, Activity, Target,
+  Clock, CheckCircle2, XCircle, Phone, Mail,
 } from "lucide-react";
 import { useDataStore } from "@/stores/data-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { StatCard } from "@/components/shared/stat-card";
+import { StatCardSkeleton, ChartSkeleton } from "@/components/shared/skeletons";
 import { PageHeader } from "@/components/shared/states";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { propertyStatusConfig, leadStatusConfig, appointmentStatusConfig } from "@/lib/constants";
-import { formatCurrency, formatCompactCurrency, formatRelative } from "@/lib/utils";
+import { formatCurrency, formatCompactCurrency, formatRelative, initials } from "@/lib/utils";
+import { mockRecentActivity, mockUsers } from "@/lib/mock-data";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, AreaChart, Area, Legend,
 } from "recharts";
 
 const CHART_COLORS = ["hsl(152 43% 50%)", "hsl(38 92% 50%)", "hsl(199 89% 48%)", "hsl(0 84% 60%)", "hsl(220 9% 56%)"];
 
+const monthlyData = [
+  { month: "Apr", revenue: 120000, deals: 3 },
+  { month: "May", revenue: 185000, deals: 5 },
+  { month: "Jun", revenue: 95000, deals: 2 },
+  { month: "Jul", revenue: 210000, deals: 6 },
+  { month: "Aug", revenue: 165000, deals: 4 },
+  { month: "Sep", revenue: 545000, deals: 8 },
+];
+
+const agentPerformance = [
+  { name: "James Carter", deals: 8, revenue: 545000, listings: 8, avatar: "JC", rating: 4.9 },
+  { name: "Sarah Mitchell", deals: 6, revenue: 420000, listings: 5, avatar: "SM", rating: 5.0 },
+  { name: "Emily Rodriguez", deals: 3, revenue: 185000, listings: 3, avatar: "ER", rating: 4.7 },
+];
+
+const leadConversionData = [
+  { stage: "New", count: 1, color: "hsl(199 89% 48%)" },
+  { stage: "Contacted", count: 1, color: "hsl(38 92% 50%)" },
+  { stage: "Viewing", count: 1, color: "hsl(280 60% 55%)" },
+  { stage: "Negotiation", count: 1, color: "hsl(220 9% 56%)" },
+  { stage: "Closed", count: 1, color: "hsl(152 43% 50%)" },
+];
+
+const activityIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  property: Building2, client: Users, appointment: CalendarDays, document: Clock, deal: DollarSign,
+};
+
 export default function DashboardPage() {
   const { properties, clients, appointments } = useDataStore();
   const user = useAuthStore((s) => s.user);
+  const [loading] = useState(false);
 
   const activeListings = properties.filter((p) => p.status === "available" || p.status === "under_offer").length;
   const activeDeals = clients.filter((c) => c.status === "negotiation" || c.status === "viewing").length;
   const upcomingAppts = appointments.filter((a) => a.status === "scheduled").length;
-  const totalRevenue = properties
-    .filter((p) => p.status === "sold" || p.status === "rented")
-    .reduce((sum, p) => sum + p.price, 0);
+  const totalRevenue = properties.filter((p) => p.status === "sold" || p.status === "rented").reduce((sum, p) => sum + p.price, 0);
+  const totalViews = properties.reduce((sum, p) => sum + p.views, 0);
+  const conversionRate = clients.length > 0 ? Math.round((clients.filter((c) => c.status === "closed").length / clients.length) * 100) : 0;
 
-  const monthlyData = [
-    { month: "Apr", revenue: 120000 },
-    { month: "May", revenue: 185000 },
-    { month: "Jun", revenue: 95000 },
-    { month: "Jul", revenue: 210000 },
-    { month: "Aug", revenue: 165000 },
-    { month: "Sep", revenue: 545000 },
-  ];
-
-  const statusData = Object.entries(
+  const statusData = useMemo(() => Object.entries(
     properties.reduce<Record<string, number>>((acc, p) => {
       const label = propertyStatusConfig[p.status].label;
       acc[label] = (acc[label] ?? 0) + 1;
       return acc;
     }, {}),
-  ).map(([name, count]) => ({ name, value: count }));
+  ).map(([name, count]) => ({ name, value: count })), [properties]);
 
-  const leadData = Object.entries(
+  const leadData = useMemo(() => Object.entries(
     clients.reduce<Record<string, number>>((acc, c) => {
       const label = leadStatusConfig[c.status].label;
       acc[label] = (acc[label] ?? 0) + 1;
       return acc;
     }, {}),
-  ).map(([name, count]) => ({ name, value: count }));
+  ).map(([name, count]) => ({ name, value: count })), [clients]);
 
   const upcomingAppointments = appointments
     .filter((a) => a.status === "scheduled")
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 4);
 
-  const recentProperties = [...properties]
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, 4);
+  const recentProperties = [...properties].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 4);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2"><ChartSkeleton /></div>
+          <ChartSkeleton />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in-up space-y-6">
       <PageHeader title={`Welcome back, ${user?.firstName}`} description="Here's what's happening with your agency today.">
-        <Link to="/properties/new">
-          <Button><Plus className="h-4 w-4" /> New Listing</Button>
-        </Link>
+        <Link to="/properties/new"><Button><Plus className="h-4 w-4" /> New Listing</Button></Link>
       </PageHeader>
 
       {/* Stats */}
@@ -80,25 +113,36 @@ export default function DashboardPage() {
         <StatCard label="Total Revenue" value={formatCompactCurrency(totalRevenue)} icon={DollarSign} trend="8% from last quarter" trendUp />
       </div>
 
+      {/* Secondary stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Total Property Views" value={totalViews.toLocaleString()} icon={Eye} trend="15% increase" trendUp />
+        <StatCard label="Conversion Rate" value={`${conversionRate}%`} icon={Target} trend="Above industry avg" trendUp />
+        <StatCard label="Avg. Property Value" value={formatCompactCurrency(Math.round(properties.reduce((s, p) => s + p.price, 0) / properties.length))} icon={Home} trend="5% YoY" trendUp />
+        <StatCard label="Client Satisfaction" value="98%" icon={Award} trend="Based on surveys" trendUp />
+      </div>
+
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Revenue Overview</CardTitle>
+            <CardTitle>Revenue & Deals Overview</CardTitle>
             <Badge variant="success"><TrendingUp className="h-3 w-3" /> Growing</Badge>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={monthlyData}>
+              <AreaChart data={monthlyData}>
+                <defs>
+                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(152 43% 50%)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(152 43% 50%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}K`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }}
-                  formatter={(v: number) => [formatCurrency(v), "Revenue"]}
-                />
-                <Bar dataKey="revenue" fill="hsl(152 43% 50%)" radius={[6, 6, 0, 0]} />
-              </BarChart>
+                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} formatter={(v: number) => [formatCurrency(v), "Revenue"]} />
+                <Area type="monotone" dataKey="revenue" stroke="hsl(152 43% 50%)" strokeWidth={2} fill="url(#revGrad)" />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -129,8 +173,36 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Lead pipeline + Upcoming appointments */}
+      {/* Agent performance + Lead pipeline */}
       <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader><CardTitle>Agent Performance</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            {agentPerformance.map((agent, i) => (
+              <div key={agent.name} className="flex items-center gap-4 rounded-lg border border-border p-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold">
+                  {agent.avatar}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="truncate text-sm font-medium">{agent.name}</p>
+                    <div className="flex items-center gap-1 text-xs">
+                      <Award className="h-3 w-3 text-warning" />
+                      <span className="font-medium">{agent.rating}</span>
+                    </div>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <span>{agent.deals} deals closed</span>
+                    <span>{agent.listings} active listings</span>
+                    <span className="font-medium text-foreground">{formatCompactCurrency(agent.revenue)}</span>
+                  </div>
+                </div>
+                {i === 0 && <Badge variant="success" className="shrink-0">Top Agent</Badge>}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>Lead Pipeline</CardTitle>
@@ -143,6 +215,31 @@ export default function DashboardPage() {
                 <Badge variant="muted">{l.value}</Badge>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent activity + Upcoming appointments */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2"><Activity className="h-4 w-4" /> Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {mockRecentActivity.slice(0, 5).map((act) => {
+              const Icon = activityIcons[act.type] ?? Clock;
+              return (
+                <div key={act.id} className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm">{act.description}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{act.actorName} · {formatRelative(act.createdAt)}</p>
+                  </div>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
 
@@ -160,7 +257,7 @@ export default function DashboardPage() {
                   <img src={a.propertyImage} alt="" className="h-12 w-12 rounded-lg object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{a.propertyTitle}</p>
-                    <p className="text-xs text-muted-foreground">{a.clientName} • {a.date} at {a.time}</p>
+                    <p className="text-xs text-muted-foreground">{a.clientName} · {a.date} at {a.time}</p>
                   </div>
                   <Badge variant={appointmentStatusConfig[a.status].badge}>{appointmentStatusConfig[a.status].label}</Badge>
                 </div>

@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { leadStatusConfig, leadStatusOrder } from "@/lib/constants";
+import { toast } from "@/components/ui/toast";
 import type { Client, LeadStatus, PropertyType } from "@/types";
 
 const schema = z.object({
@@ -72,8 +73,10 @@ export default function ClientFormPage() {
     };
     if (isEdit) {
       updateClient(existing!.id, payload);
+      toast.success("Client updated", "Your changes have been saved.");
     } else {
       addClient(payload);
+      toast.success("Client created", `${payload.firstName} ${payload.lastName} has been added.`);
     }
     navigate(`/clients/${payload.id}`);
   };

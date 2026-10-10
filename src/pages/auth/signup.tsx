@@ -30,7 +30,7 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await signup(data);
-      navigate("/dashboard");
+      navigate("/onboarding");
     } finally {
       setLoading(false);
     }

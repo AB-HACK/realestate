@@ -11,6 +11,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/utils";
+import { toast } from "@/components/ui/toast";
 import type { DocumentItem } from "@/types";
 
 const docTypeConfig: Record<string, { label: string; badge: "info" | "warning" | "success" | "muted" | "default" }> = {
@@ -61,6 +62,7 @@ export default function DocumentsPage() {
     addDocument(doc);
     setDialogOpen(false);
     setNewDoc({ name: "", type: "other", propertyId: "", clientId: "" });
+    toast.success("Document uploaded", `"${doc.name}" has been added to your library.`);
   };
 
   return (
@@ -158,7 +160,7 @@ export default function DocumentsPage() {
                   <Button variant="ghost" size="icon" onClick={() => { /* placeholder download */ }}>
                     <Download className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => deleteDocument(doc.id)} className="text-destructive hover:text-destructive">
+                  <Button variant="ghost" size="icon" onClick={() => { deleteDocument(doc.id); toast.success("Document deleted", `"${doc.name}" has been removed.`); }} className="text-destructive hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

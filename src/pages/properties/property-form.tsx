@@ -13,6 +13,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { amenityLabels } from "@/lib/constants";
+import { toast } from "@/components/ui/toast";
 import type { Property, PropertyStatus, PropertyType, ListingType, PropertyAmenities } from "@/types";
 
 const schema = z.object({
@@ -93,8 +94,10 @@ export default function PropertyFormPage() {
     };
     if (isEdit) {
       updateProperty(existing!.id, payload);
+      toast.success("Property updated", "Your changes have been saved.");
     } else {
       addProperty(payload);
+      toast.success("Property created", `"${payload.title}" has been added to your portfolio.`);
     }
     navigate(`/properties/${payload.id}`);
   };

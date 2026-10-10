@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { appointmentStatusConfig, propertyStatusConfig } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
+import { toast } from "@/components/ui/toast";
 import type { Appointment, AppointmentStatus } from "@/types";
 
 const statuses: AppointmentStatus[] = ["scheduled", "completed", "cancelled", "no_show"];
@@ -64,6 +65,7 @@ export default function AppointmentsPage() {
     addAppointment(appt);
     setDialogOpen(false);
     setNewAppt({ propertyId: "", clientId: "", date: "", time: "10:00", notes: "" });
+    toast.success("Viewing scheduled", `Appointment for ${client.firstName} ${client.lastName} on ${newAppt.date} at ${newAppt.time}.`);
   };
 
   return (

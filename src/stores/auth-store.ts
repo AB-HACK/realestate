@@ -6,10 +6,12 @@ import { mockUsers } from "@/lib/mock-data";
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  hasCompletedOnboarding: boolean;
   login: (email: string, password: string) => Promise<User>;
   signup: (data: { firstName: string; lastName: string; email: string; password: string }) => Promise<User>;
   logout: () => void;
   updateProfile: (data: Partial<User>) => void;
+  completeOnboarding: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -17,6 +19,7 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
+      hasCompletedOnboarding: false,
       login: async (email: string, _password: string) => {
         const user = mockUsers.find((u) => u.email === email) ?? mockUsers[0];
         set({ user, isAuthenticated: true });
@@ -28,15 +31,16 @@ export const useAuthStore = create<AuthState>()(
           email: data.email,
           firstName: data.firstName,
           lastName: data.lastName,
-          role: "client",
+          role: "agent",
           createdAt: new Date().toISOString(),
         };
-        set({ user, isAuthenticated: true });
+        set({ user, isAuthenticated: true, hasCompletedOnboarding: false });
         return user;
       },
-      logout: () => set({ user: null, isAuthenticated: false }),
+      logout: () => set({ user: null, isAuthenticated: false, hasCompletedOnboarding: false }),
       updateProfile: (data) =>
         set((state) => ({ user: state.user ? { ...state.user, ...data } : null })),
+      completeOnboarding: () => set({ hasCompletedOnboarding: true }),
     }),
     { name: "aecren-auth" },
   ),

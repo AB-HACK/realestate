@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outlet, useLocation, Link, useNavigate } from "react-router-dom";
-import { Menu, Moon, Sun, LogOut, User as UserIcon, Settings as SettingsIcon, Bell } from "lucide-react";
+import { Menu, Moon, Sun, LogOut, User as UserIcon, Settings as SettingsIcon, Bell, LayoutDashboard, Building2, Users, CalendarDays } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { Sidebar } from "./sidebar";
@@ -24,6 +24,13 @@ const pageTitles: Record<string, string> = {
   "/documents": "Documents",
   "/settings": "Settings",
 };
+
+const bottomNavItems = [
+  { to: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { to: "/properties", label: "Properties", icon: Building2 },
+  { to: "/clients", label: "Clients", icon: Users },
+  { to: "/appointments", label: "Appts", icon: CalendarDays },
+];
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -59,15 +66,15 @@ export function AppLayout() {
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <h1 className="font-display text-lg font-semibold">{currentTitle}</h1>
+            <h1 className="font-display text-base font-semibold sm:text-lg">{currentTitle}</h1>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
+            <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme" className="h-9 w-9">
               {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </Button>
 
-            <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+            <Button variant="ghost" size="icon" className="relative h-9 w-9" aria-label="Notifications">
               <Bell className="h-5 w-5" />
               <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />
             </Button>
@@ -107,10 +114,32 @@ export function AppLayout() {
         </header>
 
         <main className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className={cn("mx-auto max-w-7xl p-4 lg:p-8")}>
+          <div className={cn("mx-auto max-w-7xl p-4 pb-24 lg:p-8 lg:pb-8")}>
             <Outlet />
           </div>
         </main>
+
+        {/* Mobile bottom navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-border bg-card px-2 py-2 lg:hidden">
+          {bottomNavItems.map((item) => {
+            const isActive =
+              location.pathname === item.to ||
+              (item.to !== "/dashboard" && location.pathname.startsWith(item.to));
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  "flex flex-col items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
       </div>
     </div>
   );
