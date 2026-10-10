@@ -15,6 +15,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { leadStatusConfig, leadStatusOrder, propertyStatusConfig, appointmentStatusConfig } from "@/lib/constants";
 import { formatCurrency, formatDate, formatRelative, initials } from "@/lib/utils";
+import { toast } from "@/components/ui/toast";
 import type { LeadStatus } from "@/types";
 
 export default function ClientDetailPage() {
@@ -44,6 +45,7 @@ export default function ClientDetailPage() {
     if (!noteText.trim() || !user) return;
     addClientNote(client.id, noteText.trim(), user.id, `${user.firstName} ${user.lastName}`);
     setNoteText("");
+    toast.success("Note added", "Your note has been saved.");
   };
 
   const activityIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -64,7 +66,7 @@ export default function ClientDetailPage() {
               <p className="text-sm text-muted-foreground">This will permanently remove {client.firstName} {client.lastName} and all associated data.</p>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setConfirmDelete(false)}>Cancel</Button>
-                <Button variant="destructive" onClick={() => { deleteClient(client.id); navigate("/clients"); }}>Delete</Button>
+                <Button variant="destructive" onClick={() => { deleteClient(client.id); toast.success("Client deleted", `${client.firstName} ${client.lastName} has been removed.`); navigate("/clients"); }}>Delete</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -118,7 +120,7 @@ export default function ClientDetailPage() {
             <CardContent>
               <Select
                 value={client.status}
-                onValueChange={(v) => updateClientStatus(client.id, v as LeadStatus, user ? `${user.firstName} ${user.lastName}` : "System")}
+                onValueChange={(v) => { updateClientStatus(client.id, v as LeadStatus, user ? `${user.firstName} ${user.lastName}` : "System"); toast.success("Status updated", `Lead status changed to ${leadStatusConfig[v as LeadStatus].label}.`); }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>

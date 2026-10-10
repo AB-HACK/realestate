@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
-export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-md bg-muted", className)} />;
+export function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={cn("animate-pulse rounded-md bg-muted", className)} style={style} />;
 }
 
 export function PropertyCardSkeleton() {
@@ -50,7 +50,7 @@ export function TableSkeleton({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 p-4">
             {Array.from({ length: cols }).map((_, j) => (
-              <Skeleton key={j} className="h-4 flex-1" style={{ maxWidth: `${100 / cols}%` }} />
+              <div key={j} className="h-4 flex-1" style={{ maxWidth: `${100 / cols}%` }} />
             ))}
           </div>
         ))}
@@ -100,7 +100,7 @@ export function ChartSkeleton() {
       <Skeleton className="h-5 w-40" />
       <div className="mt-6 flex h-[280px] items-end gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="flex-1" style={{ height: `${30 + Math.random() * 60}%` }} />
+          <div key={i} className="animate-pulse flex-1 rounded-md bg-muted" style={{ height: `${30 + Math.random() * 60}%` }} />
         ))}
       </div>
     </div>

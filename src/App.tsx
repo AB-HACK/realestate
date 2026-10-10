@@ -5,7 +5,6 @@ import { useThemeStore } from "@/stores/theme-store";
 import { ProtectedRoute } from "@/components/layout/protected-route";
 import { AppLayout } from "@/components/layout/app-layout";
 import { ToastContainer } from "@/components/ui/toast";
-import { LoadingState } from "@/components/shared/states";
 import LoginPage from "@/pages/auth/login";
 import SignupPage from "@/pages/auth/signup";
 import ForgotPasswordPage from "@/pages/auth/forgot-password";

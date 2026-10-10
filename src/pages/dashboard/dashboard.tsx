@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
-  Building2, Users, CalendarDays, DollarSign, TrendingUp, TrendingDown,
+  Building2, Users, CalendarDays, DollarSign, TrendingUp,
   Plus, ArrowRight, Eye, Home, Award, Activity, Target,
-  Clock, CheckCircle2, XCircle, Phone, Mail,
+  Clock,
 } from "lucide-react";
 import { useDataStore } from "@/stores/data-store";
 import { useAuthStore } from "@/stores/auth-store";
@@ -14,11 +14,11 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { propertyStatusConfig, leadStatusConfig, appointmentStatusConfig } from "@/lib/constants";
-import { formatCurrency, formatCompactCurrency, formatRelative, initials } from "@/lib/utils";
-import { mockRecentActivity, mockUsers } from "@/lib/mock-data";
+import { formatCurrency, formatCompactCurrency, formatRelative } from "@/lib/utils";
+import { mockRecentActivity } from "@/lib/mock-data";
 import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
-  PieChart, Pie, Cell, AreaChart, Area, Legend,
+  XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
+  PieChart, Pie, Cell, AreaChart, Area,
 } from "recharts";
 
 const CHART_COLORS = ["hsl(152 43% 50%)", "hsl(38 92% 50%)", "hsl(199 89% 48%)", "hsl(0 84% 60%)", "hsl(220 9% 56%)"];
@@ -36,14 +36,6 @@ const agentPerformance = [
   { name: "James Carter", deals: 8, revenue: 545000, listings: 8, avatar: "JC", rating: 4.9 },
   { name: "Sarah Mitchell", deals: 6, revenue: 420000, listings: 5, avatar: "SM", rating: 5.0 },
   { name: "Emily Rodriguez", deals: 3, revenue: 185000, listings: 3, avatar: "ER", rating: 4.7 },
-];
-
-const leadConversionData = [
-  { stage: "New", count: 1, color: "hsl(199 89% 48%)" },
-  { stage: "Contacted", count: 1, color: "hsl(38 92% 50%)" },
-  { stage: "Viewing", count: 1, color: "hsl(280 60% 55%)" },
-  { stage: "Negotiation", count: 1, color: "hsl(220 9% 56%)" },
-  { stage: "Closed", count: 1, color: "hsl(152 43% 50%)" },
 ];
 
 const activityIcons: Record<string, React.ComponentType<{ className?: string }>> = {
