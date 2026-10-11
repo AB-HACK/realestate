@@ -113,3 +113,22 @@ export const useDataStore = create<DataState>()((set) => ({
       ),
     })),
 }));
+
+// Selectors for optimized subscriptions
+export const selectProperties = (state: DataState) => state.properties;
+export const selectClients = (state: DataState) => state.clients;
+export const selectAppointments = (state: DataState) => state.appointments;
+export const selectDocuments = (state: DataState) => state.documents;
+export const selectAddProperty = (state: DataState) => state.addProperty;
+export const selectUpdateProperty = (state: DataState) => state.updateProperty;
+export const selectDeleteProperty = (state: DataState) => state.deleteProperty;
+export const selectAddClient = (state: DataState) => state.addClient;
+export const selectUpdateClient = (state: DataState) => state.updateClient;
+export const selectDeleteClient = (state: DataState) => state.deleteClient;
+export const selectAddAppointment = (state: DataState) => state.addAppointment;
+export const selectUpdateAppointment = (state: DataState) => state.updateAppointment;
+export const selectDeleteAppointment = (state: DataState) => state.deleteAppointment;
+export const selectAddDocument = (state: DataState) => state.addDocument;
+export const selectDeleteDocument = (state: DataState) => state.deleteDocument;
+export const selectAddClientNote = (state: DataState) => state.addClientNote;
+export const selectUpdateClientStatus = (state: DataState) => state.updateClientStatus;

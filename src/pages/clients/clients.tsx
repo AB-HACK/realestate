@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search, Users, Mail, Phone, DollarSign } from "lucide-react";
-import { useDataStore } from "@/stores/data-store";
+import { useDataStore, selectClients } from "@/stores/data-store";
 import { PageHeader, EmptyState } from "@/components/shared/states";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,9 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { leadStatusConfig, leadStatusOrder } from "@/lib/constants";
 import { formatCurrency, formatRelative, initials } from "@/lib/utils";
-import type { LeadStatus } from "@/types";
 
 export default function ClientsPage() {
-  const { clients } = useDataStore();
+  const clients = useDataStore(selectClients);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [view, setView] = useState<"list" | "pipeline">("list");

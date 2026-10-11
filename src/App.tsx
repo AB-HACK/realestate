@@ -33,7 +33,6 @@ function PageLoader() {
 export default function App() {
   const theme = useThemeStore((s) => s.theme);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const hasCompletedOnboarding = useAuthStore((s) => s.hasCompletedOnboarding);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -47,9 +46,7 @@ export default function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         <Route element={<ProtectedRoute />}>
-          {!hasCompletedOnboarding && (
-            <Route path="/onboarding" element={<Suspense fallback={<PageLoader />}><OnboardingPage /></Suspense>} />
-          )}
+          <Route path="/onboarding" element={<Suspense fallback={<PageLoader />}><OnboardingPage /></Suspense>} />
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Suspense fallback={<PageLoader />}><DashboardPage /></Suspense>} />
             <Route path="/properties" element={<Suspense fallback={<PageLoader />}><PropertiesPage /></Suspense>} />

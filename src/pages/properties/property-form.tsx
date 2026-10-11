@@ -258,7 +258,7 @@ export default function PropertyFormPage() {
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {imageUrls.map((url, i) => (
                   <div key={i} className="group relative h-24 overflow-hidden rounded-lg border border-border">
-                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <img src={url} alt="" loading="lazy" className="h-full w-full object-cover" />
                     <button type="button" onClick={() => setImageUrls((prev) => prev.filter((_, idx) => idx !== i))} className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100">
                       <X className="h-3 w-3" />
                     </button>

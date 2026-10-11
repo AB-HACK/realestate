@@ -21,7 +21,7 @@ import type { LeadStatus } from "@/types";
 export default function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { clients, properties, appointments, documents, updateClientStatus, addClientNote, deleteClient } = useDataStore();
+  const { clients, properties, appointments, updateClientStatus, addClientNote, deleteClient } = useDataStore();
   const user = useAuthStore((s) => s.user);
   const [noteText, setNoteText] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -39,7 +39,6 @@ export default function ClientDetailPage() {
 
   const interestedProperties = properties.filter((p) => client.interestedPropertyIds.includes(p.id));
   const clientAppointments = appointments.filter((a) => a.clientId === client.id);
-  const clientDocuments = documents.filter((d) => d.clientId === client.id);
 
   const handleAddNote = () => {
     if (!noteText.trim() || !user) return;
@@ -199,7 +198,7 @@ export default function ClientDetailPage() {
                 <div className="space-y-3">
                   {interestedProperties.map((p) => (
                     <Link key={p.id} to={`/properties/${p.id}`} className="flex items-center gap-3 rounded-lg border border-border p-3 transition-shadow hover:shadow-md">
-                      <img src={p.images[0]} alt="" className="h-12 w-16 rounded-lg object-cover" />
+                      <img src={p.images[0]} alt="" loading="lazy" className="h-12 w-16 rounded-lg object-cover" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{p.title}</p>
                         <p className="text-xs text-muted-foreground"><MapPin className="inline h-3 w-3" /> {p.location}</p>
@@ -225,7 +224,7 @@ export default function ClientDetailPage() {
                 <div className="space-y-3">
                   {clientAppointments.map((a) => (
                     <div key={a.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                      <img src={a.propertyImage} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                      <img src={a.propertyImage} alt="" loading="lazy" className="h-12 w-12 rounded-lg object-cover" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{a.propertyTitle}</p>
                         <p className="text-xs text-muted-foreground"><Calendar className="inline h-3 w-3" /> {formatDate(a.date)} at {a.time}</p>

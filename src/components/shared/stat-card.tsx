@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export function StatCard({
+export const StatCard = memo(function StatCard({
   label,
   value,
   icon: Icon,
@@ -34,4 +35,4 @@ export function StatCard({
       )}
     </Card>
   );
-}
+});

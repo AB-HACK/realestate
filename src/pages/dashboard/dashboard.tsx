@@ -1,11 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, memo } from "react";
 import { Link } from "react-router-dom";
 import {
   Building2, Users, CalendarDays, DollarSign, TrendingUp,
   Plus, ArrowRight, Eye, Home, Award, Activity, Target,
   Clock,
 } from "lucide-react";
-import { useDataStore } from "@/stores/data-store";
+import { useDataStore, selectProperties, selectClients, selectAppointments } from "@/stores/data-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { StatCard } from "@/components/shared/stat-card";
 import { StatCardSkeleton, ChartSkeleton } from "@/components/shared/skeletons";
@@ -22,6 +22,52 @@ import {
 } from "recharts";
 
 const CHART_COLORS = ["hsl(152 43% 50%)", "hsl(38 92% 50%)", "hsl(199 89% 48%)", "hsl(0 84% 60%)", "hsl(220 9% 56%)"];
+
+const RevenueChart = memo(function RevenueChart() {
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <AreaChart data={monthlyData}>
+        <defs>
+          <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="hsl(152 43% 50%)" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="hsl(152 43% 50%)" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+        <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}K`} />
+        <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} formatter={(v: number) => [formatCurrency(v), "Revenue"]} />
+        <Area type="monotone" dataKey="revenue" stroke="hsl(152 43% 50%)" strokeWidth={2} fill="url(#revGrad)" />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+});
+
+const StatusPieChart = memo(function StatusPieChart({ data }: { data: Array<{ name: string; value: number }> }) {
+  return (
+    <>
+      <ResponsiveContainer width="100%" height={200}>
+        <PieChart>
+          <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
+            {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+          </Pie>
+          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="mt-2 space-y-1.5">
+        {data.map((s, i) => (
+          <div key={s.name} className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+              <span className="text-muted-foreground">{s.name}</span>
+            </div>
+            <span className="font-medium">{s.value}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+});
 
 const monthlyData = [
   { month: "Apr", revenue: 120000, deals: 3 },
@@ -43,7 +89,9 @@ const activityIcons: Record<string, React.ComponentType<{ className?: string }>>
 };
 
 export default function DashboardPage() {
-  const { properties, clients, appointments } = useDataStore();
+  const properties = useDataStore(selectProperties);
+  const clients = useDataStore(selectClients);
+  const appointments = useDataStore(selectAppointments);
   const user = useAuthStore((s) => s.user);
   const [loading] = useState(false);
 
@@ -52,30 +100,39 @@ export default function DashboardPage() {
   const upcomingAppts = appointments.filter((a) => a.status === "scheduled").length;
   const totalRevenue = properties.filter((p) => p.status === "sold" || p.status === "rented").reduce((sum, p) => sum + p.price, 0);
   const totalViews = properties.reduce((sum, p) => sum + p.views, 0);
-  const conversionRate = clients.length > 0 ? Math.round((clients.filter((c) => c.status === "closed").length / clients.length) * 100) : 0;
+  const closedClients = clients.filter((c) => c.status === "closed").length;
+  const conversionRate = clients.length > 0 ? Math.round((closedClients / clients.length) * 100) : 0;
 
-  const statusData = useMemo(() => Object.entries(
-    properties.reduce<Record<string, number>>((acc, p) => {
+  const statusData = useMemo(() => {
+    const counts = properties.reduce<Record<string, number>>((acc, p) => {
       const label = propertyStatusConfig[p.status].label;
       acc[label] = (acc[label] ?? 0) + 1;
       return acc;
-    }, {}),
-  ).map(([name, count]) => ({ name, value: count })), [properties]);
+    }, {});
+    return Object.entries(counts).map(([name, count]) => ({ name, value: count }));
+  }, [properties]);
 
-  const leadData = useMemo(() => Object.entries(
-    clients.reduce<Record<string, number>>((acc, c) => {
+  const leadData = useMemo(() => {
+    const counts = clients.reduce<Record<string, number>>((acc, c) => {
       const label = leadStatusConfig[c.status].label;
       acc[label] = (acc[label] ?? 0) + 1;
       return acc;
-    }, {}),
-  ).map(([name, count]) => ({ name, value: count })), [clients]);
+    }, {});
+    return Object.entries(counts).map(([name, count]) => ({ name, value: count }));
+  }, [clients]);
 
-  const upcomingAppointments = appointments
-    .filter((a) => a.status === "scheduled")
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 4);
+  const upcomingAppointments = useMemo(() =>
+    appointments
+      .filter((a) => a.status === "scheduled")
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 4),
+    [appointments]
+  );
 
-  const recentProperties = [...properties].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 4);
+  const recentProperties = useMemo(() =>
+    [...properties].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 4),
+    [properties]
+  );
 
   if (loading) {
     return (
@@ -121,46 +178,14 @@ export default function DashboardPage() {
             <Badge variant="success"><TrendingUp className="h-3 w-3" /> Growing</Badge>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={monthlyData}>
-                <defs>
-                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(152 43% 50%)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(152 43% 50%)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}K`} />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} formatter={(v: number) => [formatCurrency(v), "Revenue"]} />
-                <Area type="monotone" dataKey="revenue" stroke="hsl(152 43% 50%)" strokeWidth={2} fill="url(#revGrad)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            <RevenueChart />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle>Listings by Status</CardTitle></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
-                  {statusData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="mt-2 space-y-1.5">
-              {statusData.map((s, i) => (
-                <div key={s.name} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
-                    <span className="text-muted-foreground">{s.name}</span>
-                  </div>
-                  <span className="font-medium">{s.value}</span>
-                </div>
-              ))}
-            </div>
+            <StatusPieChart data={statusData} />
           </CardContent>
         </Card>
       </div>
@@ -246,7 +271,7 @@ export default function DashboardPage() {
             ) : (
               upcomingAppointments.map((a) => (
                 <div key={a.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <img src={a.propertyImage} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                  <img src={a.propertyImage} alt="" loading="lazy" className="h-12 w-12 rounded-lg object-cover" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{a.propertyTitle}</p>
                     <p className="text-xs text-muted-foreground">{a.clientName} · {a.date} at {a.time}</p>
@@ -270,7 +295,7 @@ export default function DashboardPage() {
             {recentProperties.map((p) => (
               <Link key={p.id} to={`/properties/${p.id}`} className="group overflow-hidden rounded-lg border border-border transition-shadow hover:shadow-md">
                 <div className="relative h-32 overflow-hidden">
-                  <img src={p.images[0]} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                  <img src={p.images[0]} alt="" loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
                   <Badge variant={propertyStatusConfig[p.status].badge} className="absolute left-2 top-2">
                     {propertyStatusConfig[p.status].label}
                   </Badge>

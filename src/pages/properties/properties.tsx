@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search, Building2, Eye, BedDouble, Bath, Maximize, MapPin, SlidersHorizontal, Star, Heart } from "lucide-react";
-import { useDataStore } from "@/stores/data-store";
+import { useDataStore, selectProperties } from "@/stores/data-store";
 import { PageHeader, EmptyState } from "@/components/shared/states";
 import { PropertyCardSkeleton } from "@/components/shared/skeletons";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { propertyStatusConfig, propertyTypeConfig, listingTypeConfig } from "@/lib/constants";
-import { formatCompactCurrency, formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
 import type { PropertyStatus, PropertyType, ListingType } from "@/types";
 
 export default function PropertiesPage() {
-  const { properties } = useDataStore();
+  const properties = useDataStore(selectProperties);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -109,7 +109,7 @@ export default function PropertiesPage() {
               <Card className="overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
                 {/* Image */}
                 <div className="relative h-56 overflow-hidden">
-                  <img src={p.images[0]} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <img src={p.images[0]} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                   <div className="absolute left-3 top-3 flex flex-wrap gap-2">
                     <Badge variant={propertyStatusConfig[p.status].badge}>{propertyStatusConfig[p.status].label}</Badge>

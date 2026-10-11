@@ -22,7 +22,7 @@ export const useAuthStore = create<AuthState>()(
       hasCompletedOnboarding: false,
       login: async (email: string, _password: string) => {
         const user = mockUsers.find((u) => u.email === email) ?? mockUsers[0];
-        set({ user, isAuthenticated: true });
+        set({ user, isAuthenticated: true, hasCompletedOnboarding: true });
         return user;
       },
       signup: async (data) => {

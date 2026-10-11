@@ -102,7 +102,7 @@ export default function PropertyDetailPage() {
           <div className="flex gap-2 overflow-x-auto scrollbar-thin lg:flex-col lg:overflow-x-visible">
             {property.images.map((img, i) => (
               <button key={i} onClick={() => setActiveImage(i)} className={`h-20 w-24 shrink-0 overflow-hidden rounded-lg border-2 transition-all lg:h-[80px] lg:w-full ${i === activeImage ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"}`}>
-                <img src={img} alt="" className="h-full w-full object-cover" />
+                <img src={img} alt="" loading="lazy" className="h-full w-full object-cover" />
               </button>
             ))}
           </div>

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Plus, CalendarDays, Clock, MapPin, Calendar as CalendarIcon, List } from "lucide-react";
-import { useDataStore } from "@/stores/data-store";
+import { Plus, CalendarDays, Clock, Calendar as CalendarIcon, List } from "lucide-react";
+import { useDataStore, selectAppointments, selectProperties, selectClients, selectAddAppointment, selectUpdateAppointment } from "@/stores/data-store";
 import { PageHeader, EmptyState } from "@/components/shared/states";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { appointmentStatusConfig, propertyStatusConfig } from "@/lib/constants";
+import { appointmentStatusConfig } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
 import type { Appointment, AppointmentStatus } from "@/types";
@@ -18,7 +18,11 @@ import type { Appointment, AppointmentStatus } from "@/types";
 const statuses: AppointmentStatus[] = ["scheduled", "completed", "cancelled", "no_show"];
 
 export default function AppointmentsPage() {
-  const { appointments, properties, clients, addAppointment, updateAppointment } = useDataStore();
+  const appointments = useDataStore(selectAppointments);
+  const properties = useDataStore(selectProperties);
+  const clients = useDataStore(selectClients);
+  const addAppointment = useDataStore(selectAddAppointment);
+  const updateAppointment = useDataStore(selectUpdateAppointment);
   const [view, setView] = useState<"list" | "calendar">("list");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -139,7 +143,7 @@ export default function AppointmentsPage() {
             <Card key={a.id} className="p-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-4">
-                  <img src={a.propertyImage} alt="" className="h-16 w-20 rounded-lg object-cover" />
+                  <img src={a.propertyImage} alt="" loading="lazy" className="h-16 w-20 rounded-lg object-cover" />
                   <div className="min-w-0">
                     <Link to={`/properties/${a.id}`} className="font-medium hover:underline">{a.propertyTitle}</Link>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">

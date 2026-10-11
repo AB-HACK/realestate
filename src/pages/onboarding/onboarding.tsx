@@ -30,7 +30,7 @@ const preferenceOptions = [
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
-  const { user, updateProfile, completeOnboarding } = useAuthStore();
+  const { user, completeOnboarding } = useAuthStore();
   const { theme, set: setTheme } = useThemeStore();
   const [step, setStep] = useState(0);
   const [role, setRole] = useState<UserRole>(user?.role ?? "agent");
@@ -43,11 +43,16 @@ export default function OnboardingPage() {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      updateProfile({ role });
       completeOnboarding();
       toast.success("Welcome aboard!", "Your account is all set up and ready to go.");
       navigate("/dashboard");
     }
+  };
+
+  const handleSkip = () => {
+    completeOnboarding();
+    toast.success("Setup skipped", "You can complete your profile anytime in Settings.");
+    navigate("/dashboard");
   };
 
   const handleBack = () => {
@@ -207,9 +212,14 @@ export default function OnboardingPage() {
                 <div key={i} className={cn("h-1.5 rounded-full transition-all", i === step ? "w-8 bg-primary" : i < step ? "w-1.5 bg-primary" : "w-1.5 bg-border")} />
               ))}
             </div>
-            <Button onClick={handleNext}>
-              {step === 3 ? "Get Started" : "Continue"} <ArrowRight className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={handleSkip}>
+                Skip
+              </Button>
+              <Button onClick={handleNext}>
+                {step === 3 ? "Get Started" : "Continue"} <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
