@@ -14,7 +14,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { cn, initials } from "@/lib/utils";
+import { cn, initials, formatRelative } from "@/lib/utils";
+import { mockRecentActivity } from "@/lib/mock-data";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -34,6 +35,7 @@ const bottomNavItems = [
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -74,10 +76,27 @@ export function AppLayout() {
               {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </Button>
 
-            <Button variant="ghost" size="icon" className="relative h-9 w-9" aria-label="Notifications">
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />
-            </Button>
+            <DropdownMenu onOpenChange={(open) => { if (open) setUnreadNotifications(false); }}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative h-9 w-9" aria-label="Notifications">
+                  <Bell className="h-5 w-5" />
+                  {unreadNotifications && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  <span>Notifications</span>
+                  <span className="text-xs font-normal text-muted-foreground">Recent activity</span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {mockRecentActivity.slice(0, 4).map((act) => (
+                  <DropdownMenuItem key={act.id} className="flex flex-col items-start gap-0.5 py-2">
+                    <span className="text-xs font-medium leading-snug">{act.description}</span>
+                    <span className="text-[11px] text-muted-foreground">{act.actorName} · {formatRelative(act.createdAt)}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

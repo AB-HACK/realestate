@@ -20,6 +20,7 @@ type FormData = z.infer<typeof schema>;
 export default function SignupPage() {
   const navigate = useNavigate();
   const signup = useAuthStore((s) => s.signup);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -27,10 +28,13 @@ export default function SignupPage() {
   });
 
   const onSubmit = async (data: FormData) => {
+    setError("");
     setLoading(true);
     try {
       await signup(data);
       navigate("/onboarding");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create account");
     } finally {
       setLoading(false);
     }
@@ -51,6 +55,9 @@ export default function SignupPage() {
           <p className="mt-2 text-sm text-muted-foreground">It's free and only takes a minute.</p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-4">
+            {error && (
+              <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>

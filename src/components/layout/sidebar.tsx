@@ -8,9 +8,8 @@ import {
   Settings,
   Building,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/stores/auth-store";
-import { roleLabels } from "@/stores/auth-store";
+import { cn, initials } from "@/lib/utils";
+import { useAuthStore, roleLabels } from "@/stores/auth-store";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -23,6 +22,7 @@ const navItems = [
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const user = useAuthStore((s) => s.user);
+  const company = useAuthStore((s) => s.company);
   const location = useLocation();
 
   return (
@@ -32,7 +32,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           <Building className="h-5 w-5" />
         </div>
         <div className="flex flex-col">
-          <span className="font-display text-base font-bold leading-tight text-white">AecrenEstates</span>
+          <span className="font-display text-base font-bold leading-tight text-white">{company?.name || "AecrenEstates"}</span>
           <span className="text-[10px] uppercase tracking-wider text-sidebar-foreground/60">Real Estate Platform</span>
         </div>
       </div>
@@ -65,8 +65,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className="border-t border-sidebar-border p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground">
-              {user.firstName[0]}
-              {user.lastName[0]}
+              {initials(`${user.firstName} ${user.lastName}`) || "?"}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-white">

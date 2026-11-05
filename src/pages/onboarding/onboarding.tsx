@@ -30,7 +30,7 @@ const preferenceOptions = [
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
-  const { user, completeOnboarding } = useAuthStore();
+  const { user, company, updateProfile, updateCompany, updateNotifPrefs, completeOnboarding } = useAuthStore();
   const { theme, set: setTheme } = useThemeStore();
   const [step, setStep] = useState(0);
   const [role, setRole] = useState<UserRole>(user?.role ?? "agent");
@@ -43,6 +43,17 @@ export default function OnboardingPage() {
     if (step < 3) {
       setStep(step + 1);
     } else {
+      updateProfile({ role });
+      updateCompany({
+        name: agencyName.trim() || company.name,
+        address: agencyLocation.trim() || company.address,
+        website: agencyWebsite.trim() || company.website,
+      });
+      updateNotifPrefs({
+        emailNotifications: selectedPrefs.includes("emailNotifications"),
+        newLeadAlerts: selectedPrefs.includes("newLeadAlerts"),
+        appointmentReminders: selectedPrefs.includes("appointmentReminders"),
+      });
       completeOnboarding();
       toast.success("Welcome aboard!", "Your account is all set up and ready to go.");
       navigate("/dashboard");

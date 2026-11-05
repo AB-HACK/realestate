@@ -6,12 +6,13 @@ import {
   Sofa, PawPrint, Snowflake, WashingMachine, Check, ChevronLeft, ChevronRight, Share2,
 } from "lucide-react";
 import { useDataStore } from "@/stores/data-store";
+import { useAuthStore, roleLabels } from "@/stores/auth-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { propertyStatusConfig, propertyTypeConfig, listingTypeConfig, amenityLabels } from "@/lib/constants";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, initials } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
 
 const amenityIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -24,6 +25,7 @@ export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { properties, deleteProperty } = useDataStore();
+  const users = useAuthStore((s) => s.users);
   const [activeImage, setActiveImage] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -38,6 +40,10 @@ export default function PropertyDetailPage() {
     );
   }
 
+  const listingAgent = users?.find((u) => u.id === property.agentId);
+  const agentName = listingAgent ? `${listingAgent.firstName} ${listingAgent.lastName}` : "James Carter";
+  const agentRole = listingAgent ? roleLabels[listingAgent.role] : "Senior Agent";
+
   const handleDelete = () => {
     deleteProperty(property.id);
     toast.success("Property deleted", `"${property.title}" has been removed.`);
@@ -45,6 +51,7 @@ export default function PropertyDetailPage() {
   };
 
   const handleShare = () => {
+    navigator.clipboard?.writeText(window.location.href).catch(() => {});
     toast.info("Link copied", "Property link has been copied to your clipboard.");
   };
 
@@ -201,10 +208,12 @@ export default function PropertyDetailPage() {
               <div className="mt-6 border-t border-border pt-4">
                 <p className="text-xs font-medium text-muted-foreground">Listed by</p>
                 <div className="mt-2 flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold">JC</div>
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold">
+                    {initials(agentName)}
+                  </div>
                   <div>
-                    <p className="text-sm font-medium">James Carter</p>
-                    <p className="text-xs text-muted-foreground">Senior Agent</p>
+                    <p className="text-sm font-medium">{agentName}</p>
+                    <p className="text-xs text-muted-foreground">{agentRole}</p>
                   </div>
                 </div>
               </div>

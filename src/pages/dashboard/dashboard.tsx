@@ -166,7 +166,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Property Views" value={totalViews.toLocaleString()} icon={Eye} trend="15% increase" trendUp />
         <StatCard label="Conversion Rate" value={`${conversionRate}%`} icon={Target} trend="Above industry avg" trendUp />
-        <StatCard label="Avg. Property Value" value={formatCompactCurrency(Math.round(properties.reduce((s, p) => s + p.price, 0) / properties.length))} icon={Home} trend="5% YoY" trendUp />
+        <StatCard label="Avg. Property Value" value={formatCompactCurrency(properties.length > 0 ? Math.round(properties.reduce((s, p) => s + p.price, 0) / properties.length) : 0)} icon={Home} trend="5% YoY" trendUp />
         <StatCard label="Client Satisfaction" value="98%" icon={Award} trend="Based on surveys" trendUp />
       </div>
 

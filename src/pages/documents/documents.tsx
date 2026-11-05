@@ -34,7 +34,7 @@ export default function DocumentsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [newDoc, setNewDoc] = useState({ name: "", type: "other", propertyId: "", clientId: "" });
+  const [newDoc, setNewDoc] = useState({ name: "", type: "other", propertyId: "none", clientId: "none" });
 
   const filtered = useMemo(() => {
     return documents.filter((d) => {
@@ -53,16 +53,31 @@ export default function DocumentsPage() {
       fileType: "pdf",
       size: 250_000,
       url: "#",
-      propertyId: newDoc.propertyId || undefined,
-      clientId: newDoc.clientId || undefined,
+      propertyId: newDoc.propertyId && newDoc.propertyId !== "none" ? newDoc.propertyId : undefined,
+      clientId: newDoc.clientId && newDoc.clientId !== "none" ? newDoc.clientId : undefined,
       uploadedById: user.id,
       uploadedByName: `${user.firstName} ${user.lastName}`,
       createdAt: new Date().toISOString(),
     };
     addDocument(doc);
     setDialogOpen(false);
-    setNewDoc({ name: "", type: "other", propertyId: "", clientId: "" });
+    setNewDoc({ name: "", type: "other", propertyId: "none", clientId: "none" });
     toast.success("Document uploaded", `"${doc.name}" has been added to your library.`);
+  };
+
+  const handleDownload = (doc: DocumentItem) => {
+    const blob = new Blob([`AecrenEstates Document: ${doc.name}\nType: ${doc.type}\nUploaded by: ${doc.uploadedByName}\nDate: ${doc.createdAt}`], {
+      type: "text/plain;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = doc.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.info("Download started", `Downloading "${doc.name}".`);
   };
 
   return (
@@ -92,7 +107,7 @@ export default function DocumentsPage() {
                   <Select value={newDoc.propertyId} onValueChange={(v) => setNewDoc((p) => ({ ...p, propertyId: v }))}>
                     <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {properties.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -102,7 +117,7 @@ export default function DocumentsPage() {
                   <Select value={newDoc.clientId} onValueChange={(v) => setNewDoc((p) => ({ ...p, clientId: v }))}>
                     <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -157,7 +172,7 @@ export default function DocumentsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => { /* placeholder download */ }}>
+                  <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)} aria-label="Download document">
                     <Download className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={() => { deleteDocument(doc.id); toast.success("Document deleted", `"${doc.name}" has been removed.`); }} className="text-destructive hover:text-destructive">

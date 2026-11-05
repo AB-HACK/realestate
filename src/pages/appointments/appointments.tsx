@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Plus, CalendarDays, Clock, Calendar as CalendarIcon, List } from "lucide-react";
 import { useDataStore, selectAppointments, selectProperties, selectClients, selectAddAppointment, selectUpdateAppointment } from "@/stores/data-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { PageHeader, EmptyState } from "@/components/shared/states";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ export default function AppointmentsPage() {
   const clients = useDataStore(selectClients);
   const addAppointment = useDataStore(selectAddAppointment);
   const updateAppointment = useDataStore(selectUpdateAppointment);
+  const user = useAuthStore((s) => s.user);
   const [view, setView] = useState<"list" | "calendar">("list");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -57,8 +59,8 @@ export default function AppointmentsPage() {
       propertyImage: property.images[0],
       clientId: client.id,
       clientName: `${client.firstName} ${client.lastName}`,
-      agentId: "u-2",
-      agentName: "James Carter",
+      agentId: user?.id ?? "u-2",
+      agentName: user ? `${user.firstName} ${user.lastName}` : "James Carter",
       date: newAppt.date,
       time: newAppt.time,
       duration: 60,
@@ -145,7 +147,7 @@ export default function AppointmentsPage() {
                 <div className="flex items-center gap-4">
                   <img src={a.propertyImage} alt="" loading="lazy" className="h-16 w-20 rounded-lg object-cover" />
                   <div className="min-w-0">
-                    <Link to={`/properties/${a.id}`} className="font-medium hover:underline">{a.propertyTitle}</Link>
+                    <Link to={`/properties/${a.propertyId}`} className="font-medium hover:underline">{a.propertyTitle}</Link>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {formatDate(a.date)}</span>
                       <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {a.time} ({a.duration}min)</span>
@@ -183,7 +185,7 @@ export default function AppointmentsPage() {
                 </p>
                 <div className="mt-1 space-y-1">
                   {dayAppts.map((a) => (
-                    <Link key={a.id} to={`/properties/${a.id}`} className="block rounded-md bg-accent/50 px-2 py-1 text-xs transition-colors hover:bg-accent">
+                    <Link key={a.id} to={`/properties/${a.propertyId}`} className="block rounded-md bg-accent/50 px-2 py-1 text-xs transition-colors hover:bg-accent">
                       <p className="truncate font-medium">{a.time} — {a.clientName}</p>
                       <p className="truncate text-muted-foreground">{a.propertyTitle}</p>
                     </Link>

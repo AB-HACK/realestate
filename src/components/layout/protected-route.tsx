@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function ProtectedRoute({ children }: { children?: React.ReactNode }) {
@@ -15,5 +15,10 @@ export function ProtectedRoute({ children }: { children?: React.ReactNode }) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  return <>{children}</>;
+  // Redirect away from onboarding if already completed
+  if (hasCompletedOnboarding && location.pathname === "/onboarding") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children ? <>{children}</> : <Outlet />;
 }

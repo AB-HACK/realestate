@@ -10,10 +10,11 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { initials } from "@/lib/utils";
+import { toast } from "@/components/ui/toast";
 import type { NotificationPrefs } from "@/types";
 
 export default function SettingsPage() {
-  const { user, updateProfile } = useAuthStore();
+  const { user, company: storedCompany, notifPrefs: storedNotifPrefs, updateProfile, updateCompany, updateNotifPrefs } = useAuthStore();
   const [firstName, setFirstName] = useState(user?.firstName ?? "");
   const [lastName, setLastName] = useState(user?.lastName ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -22,26 +23,43 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
 
   const [company, setCompany] = useState({
-    name: "AecrenEstates",
-    email: "contact@aecrenestates.com",
-    phone: "+1 202-555-0100",
-    address: "1200 Market St, Suite 500, Washington DC",
-    website: "www.aecrenestates.com",
-    description: "Premium real estate agency serving clients nationwide.",
+    name: storedCompany?.name ?? "AecrenEstates",
+    email: storedCompany?.email ?? "contact@aecrenestates.com",
+    phone: storedCompany?.phone ?? "+1 202-555-0100",
+    address: storedCompany?.address ?? "1200 Market St, Suite 500, Washington DC",
+    website: storedCompany?.website ?? "www.aecrenestates.com",
+    description: storedCompany?.description ?? "Premium real estate agency serving clients nationwide.",
   });
 
-  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>({
-    emailNotifications: true,
-    newLeadAlerts: true,
-    appointmentReminders: true,
-    propertyUpdates: false,
-    weeklyReports: true,
-    smsNotifications: false,
-  });
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(
+    storedNotifPrefs ?? {
+      emailNotifications: true,
+      newLeadAlerts: true,
+      appointmentReminders: true,
+      propertyUpdates: false,
+      weeklyReports: true,
+      smsNotifications: false,
+    },
+  );
 
   const handleSaveProfile = () => {
     updateProfile({ firstName, lastName, email, phone, bio });
     setSaved(true);
+    toast.success("Profile saved", "Your profile information has been updated.");
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleSaveCompany = () => {
+    updateCompany(company);
+    setSaved(true);
+    toast.success("Company settings saved", "Your agency details have been updated.");
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleSaveNotifPrefs = () => {
+    updateNotifPrefs(notifPrefs);
+    setSaved(true);
+    toast.success("Preferences saved", "Your notification preferences have been updated.");
     setTimeout(() => setSaved(false), 2000);
   };
 
@@ -142,7 +160,7 @@ export default function SettingsPage() {
                 <textarea id="companyDescription" rows={3} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={company.description} onChange={(e) => setCompany((p) => ({ ...p, description: e.target.value }))} />
               </div>
-              <Button onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }}>
+              <Button onClick={handleSaveCompany}>
                 <Save className="h-4 w-4" /> Save Changes
               </Button>
             </CardContent>
@@ -162,7 +180,7 @@ export default function SettingsPage() {
                   />
                 </div>
               ))}
-              <Button onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }}>
+              <Button onClick={handleSaveNotifPrefs}>
                 <Save className="h-4 w-4" /> Save Preferences
               </Button>
             </CardContent>

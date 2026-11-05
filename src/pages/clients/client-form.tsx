@@ -47,8 +47,9 @@ export default function ClientFormPage() {
   });
 
   const onSubmit = (data: FormData) => {
+    const clientId = existing?.id ?? `c-${Date.now()}`;
     const payload: Client = {
-      id: existing?.id ?? `c-${Date.now()}`,
+      id: clientId,
       firstName: data.firstName,
       lastName: data.lastName,
       email: data.email,
@@ -61,7 +62,7 @@ export default function ClientFormPage() {
       notes: existing?.notes ?? [],
       activities: existing?.activities ?? [{
         id: `a-${Date.now()}`,
-        clientId: existing?.id ?? "",
+        clientId,
         type: "created",
         description: "Lead created",
         authorName: user ? `${user.firstName} ${user.lastName}` : "System",
