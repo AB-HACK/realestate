@@ -1,5 +1,15 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
+# Automatically load root .env file (which is gitignored) if present
+_ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
+if _ROOT_ENV.exists():
+    for _line in _ROOT_ENV.read_text(encoding="utf-8").splitlines():
+        _stripped = _line.strip()
+        if _stripped and not _stripped.startswith("#") and "=" in _stripped:
+            _key, _val = _stripped.split("=", 1)
+            os.environ.setdefault(_key.strip(), _val.strip())
 
 
 @dataclass

@@ -108,9 +108,16 @@ export const InteractivePlotMap: React.FC<InteractivePlotMapProps> = ({
       const ty = baseTileY + dy;
       const left = viewWidth / 2 + (tx - centerTile.x) * 256;
       const top = viewHeight / 2 + (ty - centerTile.y) * 256;
-      const url = showSatellite
-        ? `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${tx}`
-        : `https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`;
+      const satelliteTemplate =
+        import.meta.env.VITE_ESRI_SATELLITE_TILE_URL ||
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      const streetTemplate =
+        import.meta.env.VITE_OSM_STREET_TILE_URL ||
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+      const url = (showSatellite ? satelliteTemplate : streetTemplate)
+        .replace('{z}', String(zoom))
+        .replace('{x}', String(tx))
+        .replace('{y}', String(ty));
       tiles.push({ tx, ty, left, top, url });
     }
   }

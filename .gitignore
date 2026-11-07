@@ -1,0 +1,69 @@
+# ==============================================================================
+# 1. API Keys, Secrets & Environment Configuration Files (Hidden from Git)
+# ==============================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+secrets/
+api_keys.json
+
+# ==============================================================================
+# 2. Private Document Vault & Uploaded Evidence (NDPA 2023 & Part A Rule 6)
+# ==============================================================================
+backend/private_vault
+backend/private_vault/
+private_vault
+private_vault/
+
+# ==============================================================================
+# 3. Local Databases & SQLite Journals
+# ==============================================================================
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+aecren_evidence.db
+
+# ==============================================================================
+# 4. Node.js / Frontend Dependencies & Build Output
+# ==============================================================================
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==============================================================================
+# 5. Python / FastAPI Virtual Environments & Test Caches
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+ENV/
+.coverage
+htmlcov/
+
+# ==============================================================================
+# 6. Editor & OS Files
+# ==============================================================================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
