@@ -1,318 +1,381 @@
-import { useState, useMemo, memo } from "react";
-import { Link } from "react-router-dom";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useDataStore } from '../../stores/data-store';
+import { useAuthStore } from '../../stores/auth-store';
+import { useCurrencyStore } from '../../stores/currency-store';
 import {
-  Building2, Users, CalendarDays, DollarSign, TrendingUp,
-  Plus, ArrowRight, Eye, Home, Award, Activity, Target,
-  Clock,
-} from "lucide-react";
-import { useDataStore, selectProperties, selectClients, selectAppointments } from "@/stores/data-store";
-import { useAuthStore } from "@/stores/auth-store";
-import { StatCard } from "@/components/shared/stat-card";
-import { StatCardSkeleton, ChartSkeleton } from "@/components/shared/skeletons";
-import { PageHeader } from "@/components/shared/states";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { propertyStatusConfig, leadStatusConfig, appointmentStatusConfig } from "@/lib/constants";
-import { formatCurrency, formatCompactCurrency, formatRelative } from "@/lib/utils";
-import { mockRecentActivity } from "@/lib/mock-data";
-import {
-  XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
-  PieChart, Pie, Cell, AreaChart, Area,
-} from "recharts";
+  Compass,
+  ShieldAlert,
+  FileCheck2,
+  Link2,
+  Plus,
+  ArrowRight,
+  Camera,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react';
+import { MEASUREMENT_DISCLAIMER, MEASUREMENT_METHOD_CONFIG } from '../../lib/nigeria-data';
 
-const CHART_COLORS = ["hsl(152 43% 50%)", "hsl(38 92% 50%)", "hsl(199 89% 48%)", "hsl(0 84% 60%)", "hsl(220 9% 56%)"];
+export const Dashboard: React.FC = () => {
+  const {
+    plots,
+    buildings,
+    inspections,
+    agentProfiles,
+    paymentReceipts,
+    auditEvents,
+    auditVerification,
+  } = useDataStore();
+  const { user } = useAuthStore();
+  const { formatPrice } = useCurrencyStore();
 
-const RevenueChart = memo(function RevenueChart() {
-  return (
-    <ResponsiveContainer width="100%" height={280}>
-      <AreaChart data={monthlyData}>
-        <defs>
-          <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="hsl(152 43% 50%)" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="hsl(152 43% 50%)" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-        <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v / 1000}K`} />
-        <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} formatter={(v: number) => [formatCurrency(v), "Revenue"]} />
-        <Area type="monotone" dataKey="revenue" stroke="hsl(152 43% 50%)" strokeWidth={2} fill="url(#revGrad)" />
-      </AreaChart>
-    </ResponsiveContainer>
+  const openSpatialFlagsCount = plots.reduce(
+    (sum, p) => sum + p.spatial_flags.filter((f) => f.status === 'open').length,
+    0
   );
-});
 
-const StatusPieChart = memo(function StatusPieChart({ data }: { data: Array<{ name: string; value: number }> }) {
+  const pendingDocReviewsCount = plots.reduce(
+    (sum, p) =>
+      sum +
+      p.documents.filter((d) => d.status === 'uploaded' || d.status === 'under_review').length,
+    0
+  );
+
+  const externallyVerifiedDocsCount = plots.reduce(
+    (sum, p) => sum + p.documents.filter((d) => d.status === 'externally_verified').length,
+    0
+  );
+
+  const totalGeofencedPhotos = plots.reduce(
+    (sum, p) =>
+      sum +
+      p.photos.filter((ph) => ph.capture_source === 'captured_in_app' && ph.within_geofence).length,
+    0
+  );
+
   return (
-    <>
-      <ResponsiveContainer width="100%" height={200}>
-        <PieChart>
-          <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
-            {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-          </Pie>
-          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="mt-2 space-y-1.5">
-        {data.map((s, i) => (
-          <div key={s.name} className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
-              <span className="text-muted-foreground">{s.name}</span>
+    <div className="space-y-6">
+      {/* Top Evidence Banner */}
+      <div className="rounded-2xl bg-slate-900 text-white p-6 shadow-md border border-slate-800">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-medium">
+              <Compass className="h-3.5 w-3.5" />
+              Phases 1, 2 &amp; 3 · Nigerian Land, Building &amp; Trust Evidence Platform
             </div>
-            <span className="font-medium">{s.value}</span>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Welcome, {user?.name || 'Visitor'} ({user?.role.replace('_', '/')})
+            </h1>
+            <p className="text-sm text-slate-300 max-w-3xl">
+              Capture physical boundary evidence (GPS corner walks, satellite traces, or SURCON surveyor
+              plans), link building footprints to parent plots, dispatch 100 m geofenced field
+              inspectors, check LASRERA/NIESV agent credentials, benchmark prices per m², and audit
+              every event in a tamper-evident SHA-256 hash chain.
+            </p>
           </div>
-        ))}
-      </div>
-    </>
-  );
-});
 
-const monthlyData = [
-  { month: "Apr", revenue: 120000, deals: 3 },
-  { month: "May", revenue: 185000, deals: 5 },
-  { month: "Jun", revenue: 95000, deals: 2 },
-  { month: "Jul", revenue: 210000, deals: 6 },
-  { month: "Aug", revenue: 165000, deals: 4 },
-  { month: "Sep", revenue: 545000, deals: 8 },
-];
-
-const agentPerformance = [
-  { name: "James Carter", deals: 8, revenue: 545000, listings: 8, avatar: "JC", rating: 4.9 },
-  { name: "Sarah Mitchell", deals: 6, revenue: 420000, listings: 5, avatar: "SM", rating: 5.0 },
-  { name: "Emily Rodriguez", deals: 3, revenue: 185000, listings: 3, avatar: "ER", rating: 4.7 },
-];
-
-const activityIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  property: Building2, client: Users, appointment: CalendarDays, document: Clock, deal: DollarSign,
-};
-
-export default function DashboardPage() {
-  const properties = useDataStore(selectProperties);
-  const clients = useDataStore(selectClients);
-  const appointments = useDataStore(selectAppointments);
-  const user = useAuthStore((s) => s.user);
-  const [loading] = useState(false);
-
-  const activeListings = properties.filter((p) => p.status === "available" || p.status === "under_offer").length;
-  const activeDeals = clients.filter((c) => c.status === "negotiation" || c.status === "viewing").length;
-  const upcomingAppts = appointments.filter((a) => a.status === "scheduled").length;
-  const totalRevenue = properties.filter((p) => p.status === "sold" || p.status === "rented").reduce((sum, p) => sum + p.price, 0);
-  const totalViews = properties.reduce((sum, p) => sum + p.views, 0);
-  const closedClients = clients.filter((c) => c.status === "closed").length;
-  const conversionRate = clients.length > 0 ? Math.round((closedClients / clients.length) * 100) : 0;
-
-  const statusData = useMemo(() => {
-    const counts = properties.reduce<Record<string, number>>((acc, p) => {
-      const label = propertyStatusConfig[p.status].label;
-      acc[label] = (acc[label] ?? 0) + 1;
-      return acc;
-    }, {});
-    return Object.entries(counts).map(([name, count]) => ({ name, value: count }));
-  }, [properties]);
-
-  const leadData = useMemo(() => {
-    const counts = clients.reduce<Record<string, number>>((acc, c) => {
-      const label = leadStatusConfig[c.status].label;
-      acc[label] = (acc[label] ?? 0) + 1;
-      return acc;
-    }, {});
-    return Object.entries(counts).map(([name, count]) => ({ name, value: count }));
-  }, [clients]);
-
-  const upcomingAppointments = useMemo(() =>
-    appointments
-      .filter((a) => a.status === "scheduled")
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, 4),
-    [appointments]
-  );
-
-  const recentProperties = useMemo(() =>
-    [...properties].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 4),
-    [properties]
-  );
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)}
-        </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2"><ChartSkeleton /></div>
-          <ChartSkeleton />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="animate-fade-in-up space-y-6">
-      <PageHeader title={`Welcome back, ${user?.firstName}`} description="Here's what's happening with your agency today.">
-        <Link to="/properties/new"><Button><Plus className="h-4 w-4" /> New Listing</Button></Link>
-      </PageHeader>
-
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Active Listings" value={activeListings} icon={Building2} trend="12% from last month" trendUp />
-        <StatCard label="Active Deals" value={activeDeals} icon={Users} trend="3 in negotiation" trendUp />
-        <StatCard label="Upcoming Viewings" value={upcomingAppts} icon={CalendarDays} trend="This week" trendUp />
-        <StatCard label="Total Revenue" value={formatCompactCurrency(totalRevenue)} icon={DollarSign} trend="8% from last quarter" trendUp />
-      </div>
-
-      {/* Secondary stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total Property Views" value={totalViews.toLocaleString()} icon={Eye} trend="15% increase" trendUp />
-        <StatCard label="Conversion Rate" value={`${conversionRate}%`} icon={Target} trend="Above industry avg" trendUp />
-        <StatCard label="Avg. Property Value" value={formatCompactCurrency(properties.length > 0 ? Math.round(properties.reduce((s, p) => s + p.price, 0) / properties.length) : 0)} icon={Home} trend="5% YoY" trendUp />
-        <StatCard label="Client Satisfaction" value="98%" icon={Award} trend="Based on surveys" trendUp />
-      </div>
-
-      {/* Charts */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Revenue & Deals Overview</CardTitle>
-            <Badge variant="success"><TrendingUp className="h-3 w-3" /> Growing</Badge>
-          </CardHeader>
-          <CardContent>
-            <RevenueChart />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Listings by Status</CardTitle></CardHeader>
-          <CardContent>
-            <StatusPieChart data={statusData} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Agent performance + Lead pipeline */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>Agent Performance</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {agentPerformance.map((agent, i) => (
-              <div key={agent.name} className="flex items-center gap-4 rounded-lg border border-border p-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold">
-                  {agent.avatar}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="truncate text-sm font-medium">{agent.name}</p>
-                    <div className="flex items-center gap-1 text-xs">
-                      <Award className="h-3 w-3 text-warning" />
-                      <span className="font-medium">{agent.rating}</span>
-                    </div>
-                  </div>
-                  <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    <span>{agent.deals} deals closed</span>
-                    <span>{agent.listings} active listings</span>
-                    <span className="font-medium text-foreground">{formatCompactCurrency(agent.revenue)}</span>
-                  </div>
-                </div>
-                {i === 0 && <Badge variant="success" className="shrink-0">Top Agent</Badge>}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Lead Pipeline</CardTitle>
-            <Link to="/clients"><Button variant="ghost" size="sm">View all <ArrowRight className="h-3 w-3" /></Button></Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {leadData.map((l) => (
-              <div key={l.name} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                <span className="text-sm font-medium">{l.name}</span>
-                <Badge variant="muted">{l.value}</Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent activity + Upcoming appointments */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2"><Activity className="h-4 w-4" /> Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {mockRecentActivity.slice(0, 5).map((act) => {
-              const Icon = activityIcons[act.type] ?? Clock;
-              return (
-                <div key={act.id} className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm">{act.description}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{act.actorName} · {formatRelative(act.createdAt)}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Upcoming Appointments</CardTitle>
-            <Link to="/appointments"><Button variant="ghost" size="sm">View all <ArrowRight className="h-3 w-3" /></Button></Link>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {upcomingAppointments.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">No upcoming appointments.</p>
-            ) : (
-              upcomingAppointments.map((a) => (
-                <div key={a.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <img src={a.propertyImage} alt="" loading="lazy" className="h-12 w-12 rounded-lg object-cover" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{a.propertyTitle}</p>
-                    <p className="text-xs text-muted-foreground">{a.clientName} · {a.date} at {a.time}</p>
-                  </div>
-                  <Badge variant={appointmentStatusConfig[a.status].badge}>{appointmentStatusConfig[a.status].label}</Badge>
-                </div>
-              ))
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            {(user?.role === 'owner' || user?.role === 'agent' || user?.role === 'admin') && (
+              <>
+                <Link
+                  to="/plots/new"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-sm transition"
+                >
+                  <Plus className="h-4 w-4" />
+                  Capture Plot
+                </Link>
+                <Link
+                  to="/buildings/new"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-sm transition"
+                >
+                  <Plus className="h-4 w-4" />
+                  Record Building
+                </Link>
+              </>
             )}
-          </CardContent>
-        </Card>
+            <Link
+              to="/buildings"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-sm font-medium border border-slate-700 transition"
+            >
+              Built Houses ({buildings.length})
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Mandatory Disclaimer */}
+        <div className="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-300">
+          <span>⚠️ {MEASUREMENT_DISCLAIMER}</span>
+          <span className="text-slate-400">
+            NDPA 2023 Compliant · Occupied homes fuzzed by ~300 m publicly
+          </span>
+        </div>
       </div>
 
-      {/* Recent properties */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Recent Listings</CardTitle>
-          <Link to="/properties"><Button variant="ghost" size="sm">View all <ArrowRight className="h-3 w-3" /></Button></Link>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {recentProperties.map((p) => (
-              <Link key={p.id} to={`/properties/${p.id}`} className="group overflow-hidden rounded-lg border border-border transition-shadow hover:shadow-md">
-                <div className="relative h-32 overflow-hidden">
-                  <img src={p.images[0]} alt="" loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-                  <Badge variant={propertyStatusConfig[p.status].badge} className="absolute left-2 top-2">
-                    {propertyStatusConfig[p.status].label}
-                  </Badge>
-                </div>
-                <div className="p-3">
-                  <p className="truncate text-sm font-medium">{p.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{p.location}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="font-display text-sm font-bold text-primary">{formatCompactCurrency(p.price)}</span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground"><Eye className="h-3 w-3" /> {p.views}</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
+      {/* Key Metrics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Registered Plots
+            </span>
+            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700">
+              <Compass className="h-5 w-5" />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="mt-3 text-2xl font-bold text-slate-900">{plots.length}</div>
+          <p className="mt-1 text-xs text-slate-600">
+            Geodesic WGS84 polygons with ±vertex uncertainty buffers
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Possible Overlaps / Duplicates
+            </span>
+            <div
+              className={`p-2 rounded-lg ${
+                openSpatialFlagsCount > 0
+                  ? 'bg-amber-50 text-amber-700'
+                  : 'bg-emerald-50 text-emerald-700'
+              }`}
+            >
+              <ShieldAlert className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-3 text-2xl font-bold text-slate-900">{openSpatialFlagsCount}</div>
+          <p className="mt-1 text-xs text-slate-600">
+            Flagged via STRtree spatial index (≥10% overlap or ≤30m centroid)
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Document Queue &amp; Vault
+            </span>
+            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-700">
+              <FileCheck2 className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-3 text-2xl font-bold text-slate-900">
+            {pendingDocReviewsCount} Pending
+          </div>
+          <p className="mt-1 text-xs text-slate-600">
+            {externallyVerifiedDocsCount} items with confirmed external report
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              Audit Hash Chain Status
+            </span>
+            <div
+              className={`p-2 rounded-lg ${
+                auditVerification.valid
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'bg-rose-50 text-rose-700'
+              }`}
+            >
+              <Link2 className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <span
+              className={`text-lg font-bold ${
+                auditVerification.valid ? 'text-emerald-700' : 'text-rose-700'
+              }`}
+            >
+              {auditVerification.valid ? 'Chain Intact' : 'Tamper Mismatch!'}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-600">
+            {auditEvents.length} append-only events · {totalGeofencedPhotos} geofenced photos
+          </p>
+        </div>
+      </div>
+
+      {/* Phase 3 Trust Layer Quick Access Cards (D1, D2, D4) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link
+          to="/inspections"
+          className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-emerald-400 transition flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold uppercase text-emerald-700">
+              D1. Field Inspections (≤100 m Geofence)
+            </span>
+            <p className="text-sm font-bold text-slate-900">
+              {inspections.length} Jobs ({inspections.filter((i) => i.status === 'completed').length}{' '}
+              Immutable Reports)
+            </p>
+            <p className="text-xs text-slate-500">
+              Diaspora/remote buyer inspection requests &amp; 11-point site reports
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-slate-400 shrink-0" />
+        </Link>
+
+        <Link
+          to="/agents"
+          className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-emerald-400 transition flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold uppercase text-indigo-700">
+              D2. Agent Regulatory Register
+            </span>
+            <p className="text-sm font-bold text-slate-900">
+              {agentProfiles.filter((a) => a.outcome === 'checked_ok').length} Checked ·{' '}
+              {agentProfiles.filter((a) => a.outcome === 'pending').length} Pending
+            </p>
+            <p className="text-xs text-slate-500">
+              LASRERA / NIESV / ESVARBON manual admin register checks
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-slate-400 shrink-0" />
+        </Link>
+
+        <Link
+          to="/documents"
+          className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:border-emerald-400 transition flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold uppercase text-amber-700">
+              D4. Proof-of-Payment Receipt Trail
+            </span>
+            <p className="text-sm font-bold text-slate-900">
+              {paymentReceipts.length} Stage Receipts Logged
+            </p>
+            <p className="text-xs text-slate-500">
+              Dual-party buyer &amp; seller confirmation or dispute ledger
+            </p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-slate-400 shrink-0" />
+        </Link>
+      </div>
+
+      {/* Recent Plot Evidence Registry Table */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base font-bold text-slate-900">
+              Recent Land Evidence Records (Nigeria)
+            </h2>
+            <p className="text-xs text-slate-500">
+              Showing geodesic area ranges, boundary capture method, and itemised evidence status (no
+              blanket &ldquo;verified&rdquo; badge).
+            </p>
+          </div>
+          <Link
+            to="/plots"
+            className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 inline-flex items-center gap-1"
+          >
+            View All Plots <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
+                <th className="py-3 px-4">Plot &amp; Location</th>
+                <th className="py-3 px-4">Boundary Method</th>
+                <th className="py-3 px-4">Geodesic Area &amp; Uncertainty</th>
+                <th className="py-3 px-4">Asking Price</th>
+                <th className="py-3 px-4">Evidence Signals</th>
+                <th className="py-3 px-4 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 text-xs">
+              {plots.map((plot) => {
+                const methodBadge = MEASUREMENT_METHOD_CONFIG[plot.measurement_method];
+                const inAppPhotos = plot.photos.filter(
+                  (ph) => ph.capture_source === 'captured_in_app' && ph.within_geofence
+                ).length;
+                const openFlags = plot.spatial_flags.filter((f) => f.status === 'open');
+
+                return (
+                  <tr key={plot.id} className="hover:bg-slate-50/80 transition">
+                    <td className="py-3.5 px-4">
+                      <Link
+                        to={`/plots/${plot.id}`}
+                        className="font-semibold text-slate-900 hover:text-emerald-700 block"
+                      >
+                        {plot.title}
+                      </Link>
+                      <span className="text-slate-500 text-[11px]">
+                        {plot.area_name}, {plot.lga}, {plot.state} · Purpose:{' '}
+                        <span className="capitalize font-medium">{plot.purpose}</span>
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium border ${methodBadge.badgeColor}`}
+                      >
+                        {methodBadge.label}
+                      </span>
+                      <span className="block text-[10px] text-slate-400 mt-0.5">
+                        ±{plot.mean_vertex_accuracy_m.toFixed(1)}m mean accuracy
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="font-bold text-slate-900 block">
+                        {plot.computed_area_m2.toLocaleString()} m² ({plot.computed_area_plots.toFixed(2)}{' '}
+                        plots)
+                      </span>
+                      <span className="text-[11px] text-emerald-800 font-medium">
+                        Range: {plot.area_low_m2.toLocaleString()} – {plot.area_high_m2.toLocaleString()}{' '}
+                        m²
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-semibold text-slate-900">
+                      {formatPrice(plot.asking_price, plot.currency)}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium ${
+                            inAppPhotos >= 4
+                              ? 'bg-emerald-50 text-emerald-800'
+                              : 'bg-amber-50 text-amber-800'
+                          }`}
+                        >
+                          <Camera className="h-3 w-3" />
+                          {inAppPhotos}/4 in-app
+                        </span>
+
+                        {openFlags.length > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-100 text-rose-800 text-[11px] font-semibold">
+                            <AlertTriangle className="h-3 w-3" />
+                            {openFlags[0].flag_type === 'possible_overlap'
+                              ? 'Possible Overlap'
+                              : 'Possible Duplicate'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px]">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                            No Overlap
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <Link
+                        to={`/plots/${plot.id}`}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-emerald-700 text-white text-xs font-medium transition"
+                      >
+                        Inspect Evidence
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
-}
+};

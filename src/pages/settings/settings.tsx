@@ -1,192 +1,152 @@
-import { useState } from "react";
-import { User as UserIcon, Building, Bell, Save } from "lucide-react";
-import { useAuthStore } from "@/stores/auth-store";
-import { PageHeader } from "@/components/shared/states";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { initials } from "@/lib/utils";
-import { toast } from "@/components/ui/toast";
-import type { NotificationPrefs } from "@/types";
+import React, { useState } from 'react';
+import { useAuthStore } from '../../stores/auth-store';
+import { useCurrencyStore } from '../../stores/currency-store';
+import { ShieldCheck, Coins, Sliders, CheckCircle2 } from 'lucide-react';
 
-export default function SettingsPage() {
-  const { user, company: storedCompany, notifPrefs: storedNotifPrefs, updateProfile, updateCompany, updateNotifPrefs } = useAuthStore();
-  const [firstName, setFirstName] = useState(user?.firstName ?? "");
-  const [lastName, setLastName] = useState(user?.lastName ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
-  const [phone, setPhone] = useState(user?.phone ?? "");
-  const [bio, setBio] = useState(user?.bio ?? "");
-  const [saved, setSaved] = useState(false);
+export const Settings: React.FC = () => {
+  const { user, demoUsers, switchRole } = useAuthStore();
+  const { displayCurrency, setCurrency, ngnPerUsd, setExchangeRate } = useCurrencyStore();
+  const [rateInput, setRateInput] = useState(String(ngnPerUsd));
+  const [savedBanner, setSavedBanner] = useState(false);
 
-  const [company, setCompany] = useState({
-    name: storedCompany?.name ?? "AecrenEstates",
-    email: storedCompany?.email ?? "contact@aecrenestates.com",
-    phone: storedCompany?.phone ?? "+1 202-555-0100",
-    address: storedCompany?.address ?? "1200 Market St, Suite 500, Washington DC",
-    website: storedCompany?.website ?? "www.aecrenestates.com",
-    description: storedCompany?.description ?? "Premium real estate agency serving clients nationwide.",
-  });
-
-  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(
-    storedNotifPrefs ?? {
-      emailNotifications: true,
-      newLeadAlerts: true,
-      appointmentReminders: true,
-      propertyUpdates: false,
-      weeklyReports: true,
-      smsNotifications: false,
-    },
-  );
-
-  const handleSaveProfile = () => {
-    updateProfile({ firstName, lastName, email, phone, bio });
-    setSaved(true);
-    toast.success("Profile saved", "Your profile information has been updated.");
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  const handleSaveCompany = () => {
-    updateCompany(company);
-    setSaved(true);
-    toast.success("Company settings saved", "Your agency details have been updated.");
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  const handleSaveNotifPrefs = () => {
-    updateNotifPrefs(notifPrefs);
-    setSaved(true);
-    toast.success("Preferences saved", "Your notification preferences have been updated.");
-    setTimeout(() => setSaved(false), 2000);
-  };
-
-  const notifLabels: Record<string, string> = {
-    emailNotifications: "Email Notifications",
-    newLeadAlerts: "New Lead Alerts",
-    appointmentReminders: "Appointment Reminders",
-    propertyUpdates: "Property Updates",
-    weeklyReports: "Weekly Reports",
-    smsNotifications: "SMS Notifications",
+  const handleSaveRate = (e: React.FormEvent) => {
+    e.preventDefault();
+    setExchangeRate(Number(rateInput) || 1600);
+    setSavedBanner(true);
+    setTimeout(() => setSavedBanner(false), 2500);
   };
 
   return (
-    <div className="animate-fade-in-up space-y-6">
-      <PageHeader title="Settings" description="Manage your profile, company, and notification preferences." />
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Platform Settings, Currency &amp; NDPA 2023 Compliance
+        </h1>
+        <p className="text-sm text-slate-600">
+          Configure Naira/Dollar exchange rates, test Role-Based Access Control (RBAC), and inspect
+          Nigeria Data Protection Act 2023 consent records.
+        </p>
+      </div>
 
-      <Tabs defaultValue="profile">
-        <TabsList>
-          <TabsTrigger value="profile" className="flex items-center gap-2"><UserIcon className="h-4 w-4" /> Profile</TabsTrigger>
-          <TabsTrigger value="company" className="flex items-center gap-2"><Building className="h-4 w-4" /> Company</TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center gap-2"><Bell className="h-4 w-4" /> Notifications</TabsTrigger>
-        </TabsList>
+      {savedBanner && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-semibold flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          Settings saved and applied across all listings.
+        </div>
+      )}
 
-        <TabsContent value="profile" className="mt-6">
-          <Card className="max-w-2xl">
-            <CardHeader><CardTitle>Profile Information</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarFallback className="bg-primary/10 text-lg font-semibold">
-                    {initials(`${firstName} ${lastName}`)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{firstName} {lastName}</p>
-                  <p className="text-xs text-muted-foreground">{email}</p>
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <textarea id="bio" rows={3} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  placeholder="Tell us about yourself..." value={bio} onChange={(e) => setBio(e.target.value)} />
-              </div>
-              <div className="flex items-center gap-3">
-                <Button onClick={handleSaveProfile}><Save className="h-4 w-4" /> Save Changes</Button>
-                {saved && <span className="text-sm text-success">Saved successfully!</span>}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* Currency & Exchange Rate */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+          <Coins className="h-5 w-5 text-emerald-600" />
+          Dual Currency Switcher (NGN ₦ ↔ USD $)
+        </h2>
+        <form onSubmit={handleSaveRate} className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Active Display Currency
+            </label>
+            <select
+              value={displayCurrency}
+              onChange={(e) => setCurrency(e.target.value as 'NGN' | 'USD')}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white font-semibold"
+            >
+              <option value="NGN">Nigerian Naira (₦ NGN)</option>
+              <option value="USD">US Dollar ($ USD)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Exchange Rate (₦ per $1 USD)
+            </label>
+            <input
+              type="number"
+              min={100}
+              value={rateInput}
+              onChange={(e) => setRateInput(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold"
+          >
+            Update Exchange Rate
+          </button>
+        </form>
+      </div>
 
-        <TabsContent value="company" className="mt-6">
-          <Card className="max-w-2xl">
-            <CardHeader><CardTitle>Company Settings</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Company Name</Label>
-                  <Input id="companyName" value={company.name} onChange={(e) => setCompany((p) => ({ ...p, name: e.target.value }))} />
+      {/* Role-Based Access Control (RBAC) Quick Switcher */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+          <Sliders className="h-5 w-5 text-indigo-600" />
+          Role-Based Access Control (RBAC) Simulator (6 Roles)
+        </h2>
+        <p className="text-xs text-slate-600">
+          Switch between the 6 required platform roles (<code>visitor</code>,{' '}
+          <code>buyer_renter</code>, <code>owner</code>, <code>agent</code>, <code>inspector</code>,{' '}
+          <code>admin</code>) to verify endpoint and UI permissions.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {demoUsers.map((u) => {
+            const active = user?.id === u.id;
+            return (
+              <button
+                key={u.id}
+                type="button"
+                onClick={() => switchRole(u.role)}
+                className={`p-3.5 rounded-xl border text-left transition ${active
+                  ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+                  : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase text-emerald-800">{u.role}</span>
+                  {active && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-700 text-white font-semibold">
+                      Active
+                    </span>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="companyEmail">Contact Email</Label>
-                  <Input id="companyEmail" type="email" value={company.email} onChange={(e) => setCompany((p) => ({ ...p, email: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="companyPhone">Contact Phone</Label>
-                  <Input id="companyPhone" value={company.phone} onChange={(e) => setCompany((p) => ({ ...p, phone: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="companyWebsite">Website</Label>
-                  <Input id="companyWebsite" value={company.website} onChange={(e) => setCompany((p) => ({ ...p, website: e.target.value }))} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="companyAddress">Address</Label>
-                <Input id="companyAddress" value={company.address} onChange={(e) => setCompany((p) => ({ ...p, address: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="companyDescription">Description</Label>
-                <textarea id="companyDescription" rows={3} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={company.description} onChange={(e) => setCompany((p) => ({ ...p, description: e.target.value }))} />
-              </div>
-              <Button onClick={handleSaveCompany}>
-                <Save className="h-4 w-4" /> Save Changes
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <div className="text-sm font-bold text-slate-900 mt-1">{u.name}</div>
+                <div className="text-[11px] text-slate-500">{u.email}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-        <TabsContent value="notifications" className="mt-6">
-          <Card className="max-w-2xl">
-            <CardHeader><CardTitle>Notification Preferences</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {Object.entries(notifLabels).map(([key, label]) => (
-                <div key={key} className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
-                  <span className="text-sm font-medium">{label}</span>
-                  <Switch
-                    checked={notifPrefs[key as keyof NotificationPrefs]}
-                    onCheckedChange={(v) => setNotifPrefs((prev) => ({ ...prev, [key]: v }))}
-                  />
-                </div>
-              ))}
-              <Button onClick={handleSaveNotifPrefs}>
-                <Save className="h-4 w-4" /> Save Preferences
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* NDPA 2023 Consent & Configurable Thresholds */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-3">
+        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-emerald-600" />
+          Nigeria Data Protection Act (NDPA) 2023 &amp; Phase 1 Thresholds
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <span className="text-slate-500 block">NDPA Consent Status</span>
+            <span className="font-bold text-emerald-800">
+              Recorded ({user?.ndpa_consent_at || 'v2023.1'})
+            </span>
+          </div>
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <span className="text-slate-500 block">Occupied Home Location Fuzzing</span>
+            <span className="font-bold text-slate-900">~300 m Public Radius (Deterministic)</span>
+          </div>
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <span className="text-slate-500 block">GPS Corner Sample Filter</span>
+            <span className="font-bold text-slate-900">
+              ~10s window · Discard &gt;15m accuracy
+            </span>
+          </div>
+          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <span className="text-slate-500 block">Spatial Overlap / Duplicate Thresholds</span>
+            <span className="font-bold text-slate-900">
+              ≥10% buffered intersection · ≤30m centroid &amp; ≤10% area
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
+};

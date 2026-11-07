@@ -1,165 +1,101 @@
-import { useState } from "react";
-import { Outlet, useLocation, Link, useNavigate } from "react-router-dom";
-import { Menu, Moon, Sun, LogOut, User as UserIcon, Settings as SettingsIcon, Bell, LayoutDashboard, Building2, Users, CalendarDays } from "lucide-react";
-import { useAuthStore } from "@/stores/auth-store";
-import { useThemeStore } from "@/stores/theme-store";
-import { Sidebar } from "./sidebar";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { cn, initials, formatRelative } from "@/lib/utils";
-import { mockRecentActivity } from "@/lib/mock-data";
+import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from './sidebar';
+import { useAuthStore } from '../../stores/auth-store';
+import { useCurrencyStore } from '../../stores/currency-store';
+import { UserRole } from '../../types';
+import { Menu, X, Coins, UserCheck } from 'lucide-react';
 
-const pageTitles: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/properties": "Properties",
-  "/clients": "Clients",
-  "/appointments": "Appointments",
-  "/documents": "Documents",
-  "/settings": "Settings",
-};
-
-const bottomNavItems = [
-  { to: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { to: "/properties", label: "Properties", icon: Building2 },
-  { to: "/clients", label: "Clients", icon: Users },
-  { to: "/appointments", label: "Appts", icon: CalendarDays },
-];
-
-export function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(true);
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
-  const { theme, toggle } = useThemeStore();
-
-  const currentTitle =
-    Object.entries(pageTitles).find(([path]) => location.pathname.startsWith(path))?.[1] ?? "Page";
+export const AppLayout: React.FC = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, switchRole } = useAuthStore();
+  const { displayCurrency, toggleCurrency, ngnPerUsd } = useCurrencyStore();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 lg:block">
+    <div className="min-h-screen bg-slate-100 flex">
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block">
         <Sidebar />
-      </aside>
+      </div>
 
-      {/* Mobile sidebar */}
-      {sidebarOpen && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
-          <aside className="fixed left-0 top-0 z-50 h-full w-64 lg:hidden">
-            <Sidebar onNavigate={() => setSidebarOpen(false)} />
-          </aside>
-        </>
+      {/* Mobile Sidebar Overlay */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div className="relative z-10 flex">
+            <Sidebar onNavigate={() => setMobileMenuOpen(false)} />
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="m-3 h-9 w-9 rounded-full bg-slate-900 text-white flex items-center justify-center"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Utility Header (Currency Switcher + RBAC Role Selector) */}
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden p-2 rounded-lg border border-slate-200 text-slate-700"
+            >
               <Menu className="h-5 w-5" />
-            </Button>
-            <h1 className="font-display text-base font-semibold sm:text-lg">{currentTitle}</h1>
+            </button>
+            <div className="text-xs text-slate-600 hidden sm:block">
+              <span className="font-semibold text-slate-900">Evidence-First Platform</span> · No
+              blanket &ldquo;verified&rdquo; badges · WGS84 Geodesic Math
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme" className="h-9 w-9">
-              {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-            </Button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* NGN <-> USD Currency Switcher */}
+            <button
+              type="button"
+              onClick={toggleCurrency}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold transition"
+              title={`1 USD = ₦${ngnPerUsd.toLocaleString()}`}
+            >
+              <Coins className="h-3.5 w-3.5 text-emerald-700" />
+              Currency: {displayCurrency === 'NGN' ? '₦ NGN (Naira)' : '$ USD (Dollar)'}
+              <span className="text-[10px] font-normal text-emerald-700 underline ml-1">
+                Switch to {displayCurrency === 'NGN' ? '$ USD' : '₦ NGN'}
+              </span>
+            </button>
 
-            <DropdownMenu onOpenChange={(open) => { if (open) setUnreadNotifications(false); }}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative h-9 w-9" aria-label="Notifications">
-                  <Bell className="h-5 w-5" />
-                  {unreadNotifications && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80">
-                <DropdownMenuLabel className="flex items-center justify-between">
-                  <span>Notifications</span>
-                  <span className="text-xs font-normal text-muted-foreground">Recent activity</span>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {mockRecentActivity.slice(0, 4).map((act) => (
-                  <DropdownMenuItem key={act.id} className="flex flex-col items-start gap-0.5 py-2">
-                    <span className="text-xs font-medium leading-snug">{act.description}</span>
-                    <span className="text-[11px] text-muted-foreground">{act.actorName} · {formatRelative(act.createdAt)}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-lg p-1 transition-colors hover:bg-accent">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary/10 text-xs font-semibold">
-                      {user ? initials(`${user.firstName} ${user.lastName}`) : "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden text-sm font-medium sm:block">
-                    {user?.firstName} {user?.lastName}
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>
-                  <p className="text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-                  <p className="text-xs text-muted-foreground">{user?.email}</p>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/settings")}>
-                  <UserIcon className="h-4 w-4" /> Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/settings")}>
-                  <SettingsIcon className="h-4 w-4" /> Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { logout(); navigate("/login"); }} className="text-destructive">
-                  <LogOut className="h-4 w-4" /> Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Quick RBAC Role Switcher for Testing All 6 Roles */}
+            <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 text-xs">
+              <UserCheck className="h-3.5 w-3.5 text-slate-600" />
+              <span className="text-slate-500 hidden sm:inline">Active Role:</span>
+              <select
+                value={user?.role || 'admin'}
+                onChange={(e) => switchRole(e.target.value as UserRole)}
+                className="bg-transparent font-bold text-slate-900 focus:outline-none cursor-pointer"
+              >
+                <option value="admin">Admin (Review &amp; Audit)</option>
+                <option value="owner">Owner (Plot Submitter)</option>
+                <option value="agent">Agent (LASRERA Checked)</option>
+                <option value="inspector">Inspector (Field Capture)</option>
+                <option value="buyer_renter">Buyer / Renter</option>
+                <option value="visitor">Visitor (Public View)</option>
+              </select>
+            </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className={cn("mx-auto max-w-7xl p-4 pb-24 lg:p-8 lg:pb-8")}>
-            <Outlet />
-          </div>
+        {/* Page Body */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          <Outlet />
         </main>
-
-        {/* Mobile bottom navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 flex items-center justify-around border-t border-border bg-card px-2 py-2 lg:hidden">
-          {bottomNavItems.map((item) => {
-            const isActive =
-              location.pathname === item.to ||
-              (item.to !== "/dashboard" && location.pathname.startsWith(item.to));
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "flex flex-col items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
       </div>
     </div>
   );
-}
+};

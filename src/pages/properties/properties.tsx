@@ -1,158 +1,200 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
-import { Plus, Search, Building2, Eye, BedDouble, Bath, Maximize, MapPin, SlidersHorizontal, Star, Heart } from "lucide-react";
-import { useDataStore, selectProperties } from "@/stores/data-store";
-import { PageHeader, EmptyState } from "@/components/shared/states";
-import { PropertyCardSkeleton } from "@/components/shared/skeletons";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { propertyStatusConfig, propertyTypeConfig, listingTypeConfig } from "@/lib/constants";
-import { formatCurrency } from "@/lib/utils";
-import { toast } from "@/components/ui/toast";
-import type { PropertyStatus, PropertyType, ListingType } from "@/types";
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useDataStore } from '../../stores/data-store';
+import { useAuthStore } from '../../stores/auth-store';
+import { useCurrencyStore } from '../../stores/currency-store';
+import { EvidenceCompletenessPanel } from '../../components/evidence/evidence-completeness-panel';
+import { NIGERIA_STATES_LGAS, MEASUREMENT_DISCLAIMER } from '../../lib/nigeria-data';
+import {
+  Search,
+  Plus,
+  MapPin,
+  ShieldAlert,
+  ArrowUpRight,
+  Lock,
+} from 'lucide-react';
 
-export default function PropertiesPage() {
-  const properties = useDataStore(selectProperties);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [listingFilter, setListingFilter] = useState<string>("all");
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [loading] = useState(false);
+export const Properties: React.FC = () => {
+  const { plots } = useDataStore();
+  const { user } = useAuthStore();
+  const { formatPrice } = useCurrencyStore();
 
-  const filtered = useMemo(() => {
-    return properties.filter((p) => {
-      const matchSearch =
-        !search ||
-        p.title.toLowerCase().includes(search.toLowerCase()) ||
-        p.location.toLowerCase().includes(search.toLowerCase()) ||
-        p.city.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === "all" || p.status === statusFilter;
-      const matchType = typeFilter === "all" || p.type === typeFilter;
-      const matchListing = listingFilter === "all" || p.listingType === listingFilter;
-      return matchSearch && matchStatus && matchType && matchListing;
-    });
-  }, [properties, search, statusFilter, typeFilter, listingFilter]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedState, setSelectedState] = useState('ALL');
+  const [selectedPurpose, setSelectedPurpose] = useState('ALL');
+  const [selectedMethod, setSelectedMethod] = useState('ALL');
 
-  const toggleFavorite = (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-        toast.info("Added to favorites", "Property saved to your favorites.");
-      }
-      return next;
-    });
-  };
+  const filteredPlots = plots.filter((plot) => {
+    const matchesSearch =
+      plot.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      plot.area_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      plot.lga.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesState = selectedState === 'ALL' || plot.state === selectedState;
+    const matchesPurpose = selectedPurpose === 'ALL' || plot.purpose === selectedPurpose;
+    const matchesMethod =
+      selectedMethod === 'ALL' || plot.measurement_method === selectedMethod;
+    return matchesSearch && matchesState && matchesPurpose && matchesMethod;
+  });
 
   return (
-    <div className="animate-fade-in-up space-y-6">
-      <PageHeader title="Properties" description={`${properties.length} total listings in your portfolio.`}>
-        <Link to="/properties/new"><Button><Plus className="h-4 w-4" /> Add Property</Button></Link>
-      </PageHeader>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">
+            Land &amp; Plot Evidence Registry
+          </h1>
+          <p className="text-sm text-slate-600 mt-0.5">
+            Every listing displays its boundary capture method, geodesic area uncertainty range, and
+            itemised document checklist status.
+          </p>
+        </div>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search by title, location, or city..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]"><SlidersHorizontal className="mr-1 h-3.5 w-3.5" /><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              {(Object.keys(propertyStatusConfig) as PropertyStatus[]).map((k) => (
-                <SelectItem key={k} value={k}>{propertyStatusConfig[k].label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Type" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {(Object.keys(propertyTypeConfig) as PropertyType[]).map((k) => (
-                <SelectItem key={k} value={k}>{propertyTypeConfig[k].label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={listingFilter} onValueChange={setListingFilter}>
-            <SelectTrigger className="w-[130px]"><SelectValue placeholder="Listing" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              {(Object.keys(listingTypeConfig) as ListingType[]).map((k) => (
-                <SelectItem key={k} value={k}>{listingTypeConfig[k].label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {(user?.role === 'owner' || user?.role === 'agent' || user?.role === 'admin') && (
+          <Link
+            to="/plots/new"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold shadow-sm transition shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            Capture New Plot Evidence
+          </Link>
+        )}
       </div>
 
-      {/* Grid */}
-      {loading ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => <PropertyCardSkeleton key={i} />)}
+      {/* Mandatory Disclaimer Banner */}
+      <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-2.5 text-xs text-amber-900 font-medium">
+        <ShieldAlert className="h-4 w-4 text-amber-700 shrink-0" />
+        <span>{MEASUREMENT_DISCLAIMER}</span>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="relative">
+          <Search className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search title, area, LGA..."
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 text-sm focus:border-emerald-600 focus:outline-none"
+          />
         </div>
-      ) : filtered.length === 0 ? (
-        <EmptyState icon={Building2} title="No properties found" description="Try adjusting your filters or add a new property to get started." action={<Link to="/properties/new"><Button><Plus className="h-4 w-4" /> Add Property</Button></Link>} />
-      ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p) => (
-            <Link key={p.id} to={`/properties/${p.id}`} className="group">
-              <Card className="overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5">
-                {/* Image */}
-                <div className="relative h-56 overflow-hidden">
-                  <img src={p.images[0]} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                  <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-                    <Badge variant={propertyStatusConfig[p.status].badge}>{propertyStatusConfig[p.status].label}</Badge>
-                    <Badge variant="secondary">{listingTypeConfig[p.listingType].label}</Badge>
-                  </div>
-                  <button
-                    onClick={(e) => toggleFavorite(e, p.id)}
-                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm transition-all hover:bg-black/60"
-                  >
-                    <Heart className={`h-4 w-4 transition-all ${favorites.has(p.id) ? "fill-destructive text-destructive" : "text-white"}`} />
-                  </button>
-                  <div className="absolute bottom-3 right-3 flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-xs text-white backdrop-blur-sm">
-                    <Eye className="h-3 w-3" /> {p.views}
-                  </div>
-                  {p.featured && (
-                    <div className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-warning/90 px-2.5 py-1 text-xs font-medium text-warning-foreground backdrop-blur-sm">
-                      <Star className="h-3 w-3 fill-current" /> Featured
-                    </div>
-                  )}
-                </div>
-                {/* Content */}
-                <div className="p-4">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <MapPin className="h-3 w-3" /> {p.neighborhood}, {p.city}
-                  </div>
-                  <h3 className="mt-1.5 truncate font-display text-base font-semibold transition-colors group-hover:text-primary">{p.title}</h3>
-                  <div className="mt-2.5 flex items-center gap-4 text-xs text-muted-foreground">
-                    {p.bedrooms > 0 && <span className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" /> {p.bedrooms}</span>}
-                    {p.bathrooms > 0 && <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" /> {p.bathrooms}</span>}
-                    <span className="flex items-center gap-1"><Maximize className="h-3.5 w-3.5" /> {p.area.toLocaleString()} sqft</span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-                    <span className="font-display text-lg font-bold text-primary">
-                      {formatCurrency(p.price)}{p.listingType === "rent" && <span className="text-xs font-normal text-muted-foreground">/mo</span>}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{propertyTypeConfig[p.type].label}</span>
-                  </div>
-                </div>
-              </Card>
-            </Link>
+
+        <select
+          value={selectedState}
+          onChange={(e) => setSelectedState(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 bg-white focus:border-emerald-600 focus:outline-none"
+        >
+          <option value="ALL">All Nigerian States</option>
+          {Object.keys(NIGERIA_STATES_LGAS).map((st) => (
+            <option key={st} value={st}>
+              {st}
+            </option>
           ))}
-        </div>
-      )}
+        </select>
+
+        <select
+          value={selectedPurpose}
+          onChange={(e) => setSelectedPurpose(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 bg-white focus:border-emerald-600 focus:outline-none"
+        >
+          <option value="ALL">All Purposes (Sale / Lease / Construction)</option>
+          <option value="sale">For Sale</option>
+          <option value="lease">For Lease</option>
+          <option value="construction">Under Construction</option>
+        </select>
+
+        <select
+          value={selectedMethod}
+          onChange={(e) => setSelectedMethod(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 bg-white focus:border-emerald-600 focus:outline-none"
+        >
+          <option value="ALL">All Boundary Capture Methods</option>
+          <option value="gps_walk">GPS Boundary Walk</option>
+          <option value="satellite_trace">Satellite Trace (Lower Confidence)</option>
+          <option value="surveyor_plan">Surveyor Plan Upload</option>
+        </select>
+      </div>
+
+      {/* Plot Cards Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {filteredPlots.map((plot) => {
+          const heroPhoto =
+            plot.photos[0]?.preview_url ||
+            'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=900&q=80';
+
+          return (
+            <div
+              key={plot.id}
+              className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col justify-between hover:border-emerald-300 transition"
+            >
+              <div>
+                {/* Image Header */}
+                <div className="relative h-48 bg-slate-900 overflow-hidden">
+                  <img
+                    src={heroPhoto}
+                    alt={plot.title}
+                    className="w-full h-full object-cover opacity-90"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
+
+                  <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+                    <span className="px-2.5 py-1 rounded-md bg-slate-900/85 text-white text-xs font-semibold uppercase tracking-wide">
+                      {plot.purpose}
+                    </span>
+                    {plot.is_occupied_home && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500/90 text-slate-950 text-xs font-semibold">
+                        <Lock className="h-3 w-3" />
+                        NDPA ~300m Fuzzed Location
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2 text-white">
+                    <div>
+                      <h2 className="text-base font-bold leading-snug">{plot.title}</h2>
+                      <p className="text-xs text-slate-200 flex items-center gap-1 mt-0.5">
+                        <MapPin className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        {plot.area_name}, {plot.lga}, {plot.state}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-lg font-extrabold text-emerald-300 block">
+                        {formatPrice(plot.asking_price, plot.currency)}
+                      </span>
+                      <span className="text-[10px] text-slate-300">
+                        {plot.computed_area_hectares.toFixed(4)} ha ·{' '}
+                        {plot.computed_area_acres.toFixed(3)} ac
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-4 space-y-3">
+                  <p className="text-xs text-slate-600 line-clamp-2">{plot.description}</p>
+                  <EvidenceCompletenessPanel plot={plot} compact />
+                </div>
+              </div>
+
+              {/* Card Footer */}
+              <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs">
+                <span className="text-slate-500">
+                  Perimeter: <strong>{plot.computed_perimeter_m} m</strong> · Custom plot scale:{' '}
+                  <strong>{plot.sqm_per_plot} m²/plot</strong>
+                </span>
+                <Link
+                  to={`/plots/${plot.id}`}
+                  className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:text-emerald-900"
+                >
+                  Open Full Dossier
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
-}
+};

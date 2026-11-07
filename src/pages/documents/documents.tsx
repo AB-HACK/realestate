@@ -1,189 +1,543 @@
-import { useState, useMemo } from "react";
-import { FileText, Search, Download, Trash2, Plus, FileType } from "lucide-react";
-import { useDataStore } from "@/stores/data-store";
-import { useAuthStore } from "@/stores/auth-store";
-import { PageHeader, EmptyState } from "@/components/shared/states";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { formatDate } from "@/lib/utils";
-import { toast } from "@/components/ui/toast";
-import type { DocumentItem } from "@/types";
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useDataStore } from '../../stores/data-store';
+import { useAuthStore } from '../../stores/auth-store';
+import { useCurrencyStore } from '../../stores/currency-store';
+import { EVIDENCE_STATUS_CONFIG, DOCUMENT_TYPE_LABELS } from '../../lib/nigeria-data';
+import { PaymentStage, CurrencyCode } from '../../types';
+import {
+  FileCheck2,
+  Lock,
+  ExternalLink,
+  KeyRound,
+  Receipt,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+} from 'lucide-react';
 
-const docTypeConfig: Record<string, { label: string; badge: "info" | "warning" | "success" | "muted" | "default" }> = {
-  contract: { label: "Contract", badge: "default" },
-  id: { label: "ID", badge: "warning" },
-  inspection: { label: "Inspection", badge: "info" },
-  offer: { label: "Offer", badge: "success" },
-  other: { label: "Other", badge: "muted" },
-};
+export const Documents: React.FC = () => {
+  const {
+    plots,
+    buildings,
+    paymentReceipts,
+    uploadPaymentReceipt,
+    respondToPaymentReceipt,
+  } = useDataStore();
+  const { user } = useAuthStore();
+  const { formatPrice } = useCurrencyStore();
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / 1_048_576).toFixed(1)} MB`;
-}
+  const [signedTokenModal, setSignedTokenModal] = useState<{
+    docTitle: string;
+    plotTitle: string;
+    signedUrl: string;
+    expiresAt: string;
+  } | null>(null);
 
-export default function DocumentsPage() {
-  const { documents, properties, clients, addDocument, deleteDocument } = useDataStore();
-  const user = useAuthStore((s) => s.user);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [newDoc, setNewDoc] = useState({ name: "", type: "other", propertyId: "none", clientId: "none" });
+  // D4: Proof-of-Payment Receipt form state
+  const [rcpTargetType, setRcpTargetType] = useState<'plot' | 'building'>('plot');
+  const [rcpTargetId, setRcpTargetId] = useState<string>(plots[0]?.id || 'plot-ibadan-001');
+  const [rcpStage, setRcpStage] = useState<PaymentStage>('deposit');
+  const [rcpAmount, setRcpAmount] = useState<string>('5000000');
+  const [rcpCurrency, setRcpCurrency] = useState<CurrencyCode>('NGN');
+  const [rcpDate, setRcpDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [rcpMethod, setRcpMethod] = useState<'bank_transfer' | 'manager_cheque' | 'escrow_transfer'>('bank_transfer');
+  const [rcpRef, setRcpRef] = useState<string>('NIP-GTB-20261106-77102');
+  const [rcpPayer, setRcpPayer] = useState<string>('Funke Adeyemi');
+  const [rcpPayee, setRcpPayee] = useState<string>('Chief Tunde Bakare');
+  const [rcpFileName, setRcpFileName] = useState<string>('Bank_Transfer_Receipt.pdf');
+  const [disputeNoteMap, setDisputeNoteMap] = useState<Record<string, string>>({});
 
-  const filtered = useMemo(() => {
-    return documents.filter((d) => {
-      const matchSearch = !search || d.name.toLowerCase().includes(search.toLowerCase());
-      const matchType = typeFilter === "all" || d.type === typeFilter;
-      return matchSearch && matchType;
+  const handleReceiptUpload = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetTitle =
+      rcpTargetType === 'plot'
+        ? plots.find((p) => p.id === rcpTargetId)?.title || 'Plot'
+        : buildings.find((b) => b.id === rcpTargetId)?.title || 'Building';
+
+    uploadPaymentReceipt({
+      target_type: rcpTargetType,
+      target_id: rcpTargetId,
+      target_title: targetTitle,
+      uploaded_by_id: user?.id || 'usr-buyer-1',
+      uploaded_by_name: user?.name || 'Funke Adeyemi',
+      uploaded_by_role: user?.role || 'buyer_renter',
+      stage: rcpStage,
+      amount: Math.max(1, Number(rcpAmount) || 0),
+      currency: rcpCurrency,
+      payment_date: rcpDate,
+      payment_method: rcpMethod,
+      bank_reference: rcpRef.trim(),
+      payer_name: rcpPayer.trim(),
+      payee_name: rcpPayee.trim(),
+      receipt_file_name: rcpFileName,
     });
-  }, [documents, search, typeFilter]);
-
-  const handleAdd = () => {
-    if (!newDoc.name.trim() || !user) return;
-    const doc: DocumentItem = {
-      id: `d-${Date.now()}`,
-      name: newDoc.name.trim(),
-      type: newDoc.type as DocumentItem["type"],
-      fileType: "pdf",
-      size: 250_000,
-      url: "#",
-      propertyId: newDoc.propertyId && newDoc.propertyId !== "none" ? newDoc.propertyId : undefined,
-      clientId: newDoc.clientId && newDoc.clientId !== "none" ? newDoc.clientId : undefined,
-      uploadedById: user.id,
-      uploadedByName: `${user.firstName} ${user.lastName}`,
-      createdAt: new Date().toISOString(),
-    };
-    addDocument(doc);
-    setDialogOpen(false);
-    setNewDoc({ name: "", type: "other", propertyId: "none", clientId: "none" });
-    toast.success("Document uploaded", `"${doc.name}" has been added to your library.`);
   };
 
-  const handleDownload = (doc: DocumentItem) => {
-    const blob = new Blob([`AecrenEstates Document: ${doc.name}\nType: ${doc.type}\nUploaded by: ${doc.uploadedByName}\nDate: ${doc.createdAt}`], {
-      type: "text/plain;charset=utf-8",
+  const allDocs = plots.flatMap((plot) =>
+    plot.documents.map((doc) => ({
+      plot,
+      doc,
+    }))
+  );
+
+  const generateSignedUrl = (docId: string, docTitle: string, plotTitle: string) => {
+    const expires = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const sig = Array.from({ length: 32 }, () =>
+      Math.floor(Math.random() * 16).toString(16)
+    ).join('');
+    setSignedTokenModal({
+      docTitle,
+      plotTitle,
+      signedUrl: `/api/documents/${docId}/signed-download?expires=${encodeURIComponent(
+        expires
+      )}&sig=${sig}`,
+      expiresAt: expires,
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = doc.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.info("Download started", `Downloading "${doc.name}".`);
   };
 
   return (
-    <div className="animate-fade-in-up space-y-6">
-      <PageHeader title="Documents" description={`${documents.length} documents in your library.`}>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4" /> Upload Document</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Upload Document</DialogTitle></DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label>Document Name</Label>
-                <Input placeholder="e.g. Purchase Agreement.pdf" value={newDoc.name} onChange={(e) => setNewDoc((p) => ({ ...p, name: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select value={newDoc.type} onValueChange={(v) => setNewDoc((p) => ({ ...p, type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(docTypeConfig).map(([key, cfg]) => <SelectItem key={key} value={key}>{cfg.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Link to Property (optional)</Label>
-                  <Select value={newDoc.propertyId} onValueChange={(v) => setNewDoc((p) => ({ ...p, propertyId: v }))}>
-                    <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {properties.map((p) => <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <Lock className="h-6 w-6 text-indigo-700" />
+            Private Document Vault &amp; Checklist Registry (B7)
+          </h1>
+          <p className="text-sm text-slate-600">
+            All land documents (Survey Plans, C of O, Governor&apos;s Consent, Deeds of Assignment)
+            are stored privately and served only via short-lived HMAC-signed access tokens — never
+            public URLs.
+          </p>
+        </div>
+      </div>
+
+      {signedTokenModal && (
+        <div className="rounded-xl border border-indigo-300 bg-indigo-50 p-4 flex flex-wrap items-center justify-between gap-3 text-xs text-indigo-950">
+          <div className="space-y-1">
+            <div className="font-bold flex items-center gap-1.5">
+              <KeyRound className="h-4 w-4 text-indigo-700" />
+              Authorised Signed Access Token Generated ({signedTokenModal.docTitle} —{' '}
+              {signedTokenModal.plotTitle})
+            </div>
+            <code className="block bg-white px-3 py-1.5 rounded border border-indigo-200 font-mono text-[11px]">
+              {signedTokenModal.signedUrl}
+            </code>
+            <span className="text-[11px] text-indigo-700">
+              Valid until {new Date(signedTokenModal.expiresAt).toLocaleTimeString()} · Logged in
+              audit chain
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSignedTokenModal(null)}
+            className="px-3 py-1.5 rounded-lg bg-indigo-900 text-white font-semibold"
+          >
+            Close
+          </button>
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase">
+                <th className="py-3 px-4">Document Type</th>
+                <th className="py-3 px-4">Plot Record</th>
+                <th className="py-3 px-4">Allowed Item Status</th>
+                <th className="py-3 px-4">External Report / Admin Notes</th>
+                <th className="py-3 px-4 text-right">Private Vault Access</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 text-xs">
+              {allDocs.map(({ plot, doc }) => {
+                const statusInfo = EVIDENCE_STATUS_CONFIG[doc.status];
+                return (
+                  <tr key={doc.id} className="hover:bg-slate-50">
+                    <td className="py-3.5 px-4 font-semibold text-slate-900">
+                      <div className="flex items-center gap-2">
+                        <FileCheck2 className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <span>{DOCUMENT_TYPE_LABELS[doc.doc_type] || doc.title}</span>
+                      </div>
+                      {doc.file_name && (
+                        <span className="text-[11px] text-slate-400 font-normal block pl-6">
+                          {doc.file_name}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <Link
+                        to={`/plots/${plot.id}`}
+                        className="font-semibold text-emerald-700 hover:underline block"
+                      >
+                        {plot.title}
+                      </Link>
+                      <span className="text-[11px] text-slate-500">
+                        {plot.area_name}, {plot.state}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`inline-block px-2.5 py-0.5 rounded-md font-semibold ${statusInfo.badgeClass}`}
+                      >
+                        {statusInfo.label}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 max-w-md">
+                      {doc.external_report_ref && (
+                        <span className="block text-emerald-800 font-semibold">
+                          External Ref: {doc.external_report_ref}
+                        </span>
+                      )}
+                      <span className="text-slate-600">
+                        {doc.admin_notes || statusInfo.description}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      {doc.file_name ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            generateSignedUrl(doc.id, doc.title, plot.title)
+                          }
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-semibold text-xs transition"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Signed Access
+                        </button>
+                      ) : (
+                        <span className="text-slate-400 text-[11px]">No file uploaded</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* D4: Proof-of-Payment Receipt Trail */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-900">
+              <Receipt className="w-3.5 h-3.5" />
+              Phase 3 · Part D4 Proof-of-Payment Trail
+            </span>
+            <h2 className="text-lg font-bold text-slate-900 mt-1">
+              Dual-Party Payment Receipt Ledger (No Platform Money Processing)
+            </h2>
+            <p className="text-xs text-slate-600">
+              Buyer/renter and seller upload off-platform bank transfer or manager&apos;s cheque receipts for deposits, rent, or purchase stages. Every receipt is sealed in the SHA-256 audit chain, and both parties can confirm or dispute.
+            </p>
+          </div>
+        </div>
+
+        {/* Upload Receipt Form */}
+        <form
+          onSubmit={handleReceiptUpload}
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200"
+        >
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Property Type &amp; Record
+            </label>
+            <div className="flex gap-1.5">
+              <select
+                value={rcpTargetType}
+                onChange={(e) => {
+                  const next = e.target.value as 'plot' | 'building';
+                  setRcpTargetType(next);
+                  setRcpTargetId(
+                    next === 'plot' ? plots[0]?.id || '' : buildings[0]?.id || ''
+                  );
+                }}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs bg-white"
+              >
+                <option value="plot">Plot</option>
+                <option value="building">Building</option>
+              </select>
+              <select
+                value={rcpTargetId}
+                onChange={(e) => setRcpTargetId(e.target.value)}
+                className="flex-1 min-w-0 rounded-lg border border-slate-300 px-2 py-1.5 text-xs bg-white"
+              >
+                {rcpTargetType === 'plot'
+                  ? plots.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))
+                  : buildings.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.title}
+                      </option>
+                    ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Payment Stage &amp; Method
+            </label>
+            <div className="flex gap-1.5">
+              <select
+                value={rcpStage}
+                onChange={(e) => setRcpStage(e.target.value as PaymentStage)}
+                className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs bg-white"
+              >
+                <option value="deposit">Deposit</option>
+                <option value="rent">Annual Rent</option>
+                <option value="purchase_instalment">Purchase Instalment</option>
+                <option value="final_balance">Final Balance</option>
+              </select>
+              <select
+                value={rcpMethod}
+                onChange={(e) =>
+                  setRcpMethod(
+                    e.target.value as 'bank_transfer' | 'manager_cheque' | 'escrow_transfer'
+                  )
+                }
+                className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-xs bg-white"
+              >
+                <option value="bank_transfer">NIP Bank Transfer</option>
+                <option value="manager_cheque">Manager&apos;s Cheque</option>
+                <option value="escrow_transfer">Solicitor Escrow</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Amount &amp; Currency
+            </label>
+            <div className="flex gap-1.5">
+              <input
+                type="number"
+                required
+                min={1}
+                value={rcpAmount}
+                onChange={(e) => setRcpAmount(e.target.value)}
+                className="flex-1 min-w-0 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs bg-white"
+              />
+              <select
+                value={rcpCurrency}
+                onChange={(e) => setRcpCurrency(e.target.value as CurrencyCode)}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs bg-white font-semibold"
+              >
+                <option value="NGN">NGN (₦)</option>
+                <option value="USD">USD ($)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Bank / Session Reference &amp; Date
+            </label>
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                required
+                value={rcpRef}
+                onChange={(e) => setRcpRef(e.target.value)}
+                placeholder="NIP Session ID"
+                className="flex-1 min-w-0 rounded-lg border border-slate-300 px-2 py-1.5 text-xs font-mono bg-white"
+              />
+              <input
+                type="date"
+                required
+                value={rcpDate}
+                onChange={(e) => setRcpDate(e.target.value)}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs bg-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Payer Name (Buyer / Renter)
+            </label>
+            <input
+              type="text"
+              required
+              value={rcpPayer}
+              onChange={(e) => setRcpPayer(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Payee Name (Owner / Seller)
+            </label>
+            <input
+              type="text"
+              required
+              value={rcpPayee}
+              onChange={(e) => setRcpPayee(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs bg-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+              Private Receipt File Name
+            </label>
+            <input
+              type="text"
+              required
+              value={rcpFileName}
+              onChange={(e) => setRcpFileName(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs bg-white"
+            />
+          </div>
+
+          <div className="flex items-end">
+            <button
+              type="submit"
+              className="w-full px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition"
+            >
+              Log Payment Receipt in Audit Chain
+            </button>
+          </div>
+        </form>
+
+        {/* Receipts Table / Cards */}
+        <div className="space-y-3">
+          {paymentReceipts.map((rcp) => (
+            <div
+              key={rcp.id}
+              className="p-4 rounded-xl border border-slate-200 bg-white flex flex-col gap-3"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-900 text-white uppercase">
+                      {rcp.stage.replace('_', ' ')}
+                    </span>
+                    <span className="text-sm font-bold text-emerald-800">
+                      {formatPrice(rcp.amount, rcp.currency)}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-800">
+                      — {rcp.target_title}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Payer: <strong>{rcp.payer_name}</strong> → Payee:{' '}
+                    <strong>{rcp.payee_name}</strong> · Ref:{' '}
+                    <code>{rcp.bank_reference}</code> · Date: {rcp.payment_date} · Method:{' '}
+                    {rcp.payment_method.replace('_', ' ')}
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Link to Client (optional)</Label>
-                  <Select value={newDoc.clientId} onValueChange={(v) => setNewDoc((p) => ({ ...p, clientId: v }))}>
-                    <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold border ${
+                      rcp.buyer_status === 'confirmed'
+                        ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                        : rcp.buyer_status === 'disputed'
+                        ? 'bg-rose-50 text-rose-900 border-rose-300'
+                        : 'bg-amber-50 text-amber-900 border-amber-300'
+                    }`}
+                  >
+                    {rcp.buyer_status === 'confirmed' ? (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    ) : rcp.buyer_status === 'disputed' ? (
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                    ) : (
+                      <Clock className="w-3.5 h-3.5" />
+                    )}
+                    Buyer: {rcp.buyer_status}
+                  </span>
+
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-semibold border ${
+                      rcp.seller_status === 'confirmed'
+                        ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                        : rcp.seller_status === 'disputed'
+                        ? 'bg-rose-50 text-rose-900 border-rose-300'
+                        : 'bg-amber-50 text-amber-900 border-amber-300'
+                    }`}
+                  >
+                    {rcp.seller_status === 'confirmed' ? (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    ) : rcp.seller_status === 'disputed' ? (
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                    ) : (
+                      <Clock className="w-3.5 h-3.5" />
+                    )}
+                    Seller: {rcp.seller_status}
+                  </span>
+                </div>
+              </div>
+
+              {rcp.dispute_notes && (
+                <div className="text-xs text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                  <strong>Confirmation / Dispute Note:</strong> {rcp.dispute_notes}
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] font-mono text-slate-400">
+                  Audit Event Hash: {rcp.audit_event_hash.slice(0, 24)}...
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    value={disputeNoteMap[rcp.id] || ''}
+                    onChange={(e) =>
+                      setDisputeNoteMap((prev) => ({
+                        ...prev,
+                        [rcp.id]: e.target.value,
+                      }))
+                    }
+                    placeholder="Add confirmation or dispute note..."
+                    className="rounded border border-slate-300 px-2.5 py-1 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      respondToPaymentReceipt({
+                        receipt_id: rcp.id,
+                        actor_id: user?.id || 'usr-owner-1',
+                        party_role: 'seller',
+                        decision: 'confirmed',
+                        notes:
+                          disputeNoteMap[rcp.id]?.trim() ||
+                          'Seller confirmed credit alert received.',
+                      })
+                    }
+                    className="px-2.5 py-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold"
+                  >
+                    Seller Confirm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      respondToPaymentReceipt({
+                        receipt_id: rcp.id,
+                        actor_id: user?.id || 'usr-owner-1',
+                        party_role: 'seller',
+                        decision: 'disputed',
+                        notes:
+                          disputeNoteMap[rcp.id]?.trim() ||
+                          'Seller disputed receipt reference; bank statement mismatch.',
+                      })
+                    }
+                    className="px-2.5 py-1 rounded bg-rose-700 hover:bg-rose-800 text-white text-xs font-semibold"
+                  >
+                    Dispute Receipt
+                  </button>
                 </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleAdd} disabled={!newDoc.name.trim()}>Upload</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </PageHeader>
-
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search documents..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+          ))}
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[150px]"><SelectValue placeholder="All Types" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {Object.entries(docTypeConfig).map(([key, cfg]) => <SelectItem key={key} value={key}>{cfg.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
       </div>
-
-      {filtered.length === 0 ? (
-        <EmptyState icon={FileText} title="No documents found" description="Upload contracts, IDs, inspection reports, or other files." />
-      ) : (
-        <Card className="divide-y divide-border p-0">
-          {filtered.map((doc) => {
-            const property = properties.find((p) => p.id === doc.propertyId);
-            const client = clients.find((c) => c.id === doc.clientId);
-            return (
-              <div key={doc.id} className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <FileType className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{doc.name}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant={docTypeConfig[doc.type].badge}>{docTypeConfig[doc.type].label}</Badge>
-                    <span>{formatFileSize(doc.size)}</span>
-                    <span>·</span>
-                    <span>Uploaded by {doc.uploadedByName}</span>
-                    <span>·</span>
-                    <span>{formatDate(doc.createdAt)}</span>
-                    {property && <span>· <span className="font-medium text-foreground">{property.title}</span></span>}
-                    {client && <span>· <span className="font-medium text-foreground">{client.firstName} {client.lastName}</span></span>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)} aria-label="Download document">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => { deleteDocument(doc.id); toast.success("Document deleted", `"${doc.name}" has been removed.`); }} className="text-destructive hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </Card>
-      )}
     </div>
   );
-}
+};

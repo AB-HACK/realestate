@@ -1,105 +1,56 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import type { User, UserRole, CompanySettings, NotificationPrefs } from "@/types";
-import { mockUsers } from "@/lib/mock-data";
+import { create } from 'zustand';
+import { User, UserRole } from '../types';
+import { DEMO_USERS } from '../lib/mock-data';
 
 interface AuthState {
   user: User | null;
-  users: User[];
+  demoUsers: User[];
   isAuthenticated: boolean;
-  hasCompletedOnboarding: boolean;
-  company: CompanySettings;
-  notifPrefs: NotificationPrefs;
-  login: (email: string, password: string) => Promise<User>;
-  signup: (data: { firstName: string; lastName: string; email: string; password: string }) => Promise<User>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role: UserRole,
+    ndpaConsent: boolean
+  ) => Promise<void>;
+  switchRole: (role: UserRole) => void;
   logout: () => void;
-  updateProfile: (data: Partial<User>) => void;
-  updateCompany: (data: Partial<CompanySettings>) => void;
-  updateNotifPrefs: (data: Partial<NotificationPrefs>) => void;
-  completeOnboarding: () => void;
 }
 
-const defaultCompany: CompanySettings = {
-  name: "AecrenEstates",
-  email: "contact@aecrenestates.com",
-  phone: "+1 202-555-0100",
-  address: "1200 Market St, Suite 500, Washington DC",
-  website: "www.aecrenestates.com",
-  description: "Premium real estate agency serving clients nationwide.",
-};
+export const useAuthStore = create<AuthState>((set) => ({
+  user: DEMO_USERS[0], // Default signed in as Admin for instant inspection
+  demoUsers: DEMO_USERS,
+  isAuthenticated: true,
 
-const defaultNotifPrefs: NotificationPrefs = {
-  emailNotifications: true,
-  newLeadAlerts: true,
-  appointmentReminders: true,
-  propertyUpdates: false,
-  weeklyReports: true,
-  smsNotifications: false,
-};
+  login: async (email: string) => {
+    const found =
+      DEMO_USERS.find((u) => u.email.toLowerCase() === email.toLowerCase()) || DEMO_USERS[0];
+    set({ user: found, isAuthenticated: true });
+  },
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      users: mockUsers,
-      isAuthenticated: false,
-      hasCompletedOnboarding: false,
-      company: defaultCompany,
-      notifPrefs: defaultNotifPrefs,
-      login: async (email: string, _password: string) => {
-        const normalizedEmail = email.trim().toLowerCase();
-        const allUsers = get().users ?? mockUsers;
-        const user = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail);
-        if (!user) {
-          throw new Error("No account found with that email address.");
-        }
-        set({ user, isAuthenticated: true, hasCompletedOnboarding: true });
-        return user;
-      },
-      signup: async (data) => {
-        const normalizedEmail = data.email.trim().toLowerCase();
-        const allUsers = get().users ?? mockUsers;
-        if (allUsers.some((u) => u.email.toLowerCase() === normalizedEmail)) {
-          throw new Error("An account with this email already exists.");
-        }
-        const user: User = {
-          id: `u-${Date.now()}`,
-          email: data.email.trim(),
-          firstName: data.firstName.trim(),
-          lastName: data.lastName.trim(),
-          role: "agent",
-          createdAt: new Date().toISOString(),
-        };
-        set({
-          user,
-          users: [...allUsers, user],
-          isAuthenticated: true,
-          hasCompletedOnboarding: false,
-        });
-        return user;
-      },
-      logout: () => set({ user: null, isAuthenticated: false, hasCompletedOnboarding: false }),
-      updateProfile: (data) =>
-        set((state) => {
-          if (!state.user) return state;
-          const updatedUser = { ...state.user, ...data };
-          return {
-            user: updatedUser,
-            users: (state.users ?? mockUsers).map((u) => (u.id === updatedUser.id ? updatedUser : u)),
-          };
-        }),
-      updateCompany: (data) =>
-        set((state) => ({ company: { ...state.company, ...data } })),
-      updateNotifPrefs: (data) =>
-        set((state) => ({ notifPrefs: { ...state.notifPrefs, ...data } })),
-      completeOnboarding: () => set({ hasCompletedOnboarding: true }),
-    }),
-    { name: "aecren-auth" },
-  ),
-);
+  register: async (name, email, _password, role, ndpaConsent) => {
+    if (!ndpaConsent) {
+      throw new Error('Explicit NDPA 2023 consent is required to register.');
+    }
+    const newUser: User = {
+      id: `usr-${Date.now()}`,
+      name,
+      email,
+      role,
+      ndpa_consent_at: new Date().toISOString(),
+    };
+    set((state) => ({
+      user: newUser,
+      demoUsers: [...state.demoUsers, newUser],
+      isAuthenticated: true,
+    }));
+  },
 
-export const roleLabels: Record<UserRole, string> = {
-  admin: "Administrator",
-  agent: "Agent",
-  client: "Client",
-};
+  switchRole: (role: UserRole) => {
+    const found = DEMO_USERS.find((u) => u.role === role) || DEMO_USERS[0];
+    set({ user: found, isAuthenticated: true });
+  },
+
+  logout: () => set({ user: null, isAuthenticated: false }),
+}));
