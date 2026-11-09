@@ -59,3 +59,4 @@ This document records every stage's baseline findings, architectural changes, te
 4. **Additional Locations**:
    - **Proof-of-Payment Receipt Ledger (`D4`)**: `src/pages/documents/documents.tsx` (`lines 211–395`).
    - **Admin Trust Overview & Suspicious Reports Queue (`D5 & D6`)**: `src/pages/admin/admin-review.tsx` (`lines 92–157` metrics bar and `lines 489–594` suspicious reports queue).
+
